@@ -499,11 +499,6 @@ window.onload = async function() {
 };
 
 async function api(path, method='GET', body=null) {
-  // Prevent redundant calls to protected routes if already logged out
-  if (!token && path !== '/config' && path !== '/login' && path !== '/register') {
-    return { success: false, message: 'Not logged in' };
-  }
-
   const opts = {
     method,
     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }
