@@ -410,7 +410,7 @@ app.get('/api/admin/provider-balance', requireAdmin, async (req, res) => {
 // Import services from provider into DB
 app.post('/api/admin/import-services', requireAdmin, async (req, res) => {
   const result = await smm.getProviderServices();
-  if (!result.success) return res.json(result);
+  if (!result.success) return res.json({ success: false, message: result.error });
 
   let imported = 0;
   for (const s of result.services) {
