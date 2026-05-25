@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>BoostGram — SMM Panel</title>
 <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
-<script src="https://accounts.google.com/gsi/client" async defer></script>
 <style>
 * { margin:0; padding:0; box-sizing:border-box; }
 :root {
@@ -205,14 +204,6 @@ tr:hover td { background:rgba(255,255,255,0.02); }
         <input class="form-input" id="regPassword" type="password" placeholder="Min 6 characters" />
       </div>
       <button class="submit-btn" onclick="doRegister()">Create Account →</button>
-    </div>
-
-    <!-- Google Sign-In Button -->
-    <div style="margin-top: 20px; display: flex; flex-direction: column; align-items: center; gap: 12px; width: 100%;">
-      <div style="width: 100%; height: 0.5px; background: var(--border); position: relative; margin: 8px 0;">
-        <span style="position: absolute; top: -10px; left: 50%; transform: translateX(-50%); background: var(--card); padding: 0 10px; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px;">Or</span>
-      </div>
-      <div id="googleBtnContainer" style="display: flex; justify-content: center; width: 100%; min-height: 40px;"></div>
     </div>
 
   </div>
@@ -504,26 +495,6 @@ let adminOrdersCache = [];
 // INIT
 // =============================================
 window.onload = async function() {
-  // Fetch Config (Google Client ID)
-  try {
-    const res = await fetch(API.replace('/api', '/api/config')).then(r => r.json());
-    if (res.google_client_id && res.google_client_id !== 'YOUR_GOOGLE_CLIENT_ID_HERE') {
-      google.accounts.id.initialize({
-        client_id: res.google_client_id,
-        callback: handleGoogleLogin
-      });
-      google.accounts.id.renderButton(
-        document.getElementById("googleBtnContainer"),
-        { theme: "dark", size: "large", width: 280, shape: "rectangular" }
-      );
-    } else {
-      document.getElementById("googleBtnContainer").innerHTML = 
-        `<div style="font-size:11px;color:var(--muted);text-align:center">Google Client ID not configured in backend .env</div>`;
-    }
-  } catch (err) {
-    console.error('Failed to load Google Client ID config:', err);
-  }
-
   if (token) loadDashboard();
 };
 
@@ -821,21 +792,7 @@ function hideAlert(id) {
 // =============================================
 // GOOGLE AUTHENTICATION HANDLER
 // =============================================
-async function handleGoogleLogin(googleRes) {
-  const credential = googleRes.credential;
-  
-  const data = await fetch(API + '/auth/google', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ credential })
-  }).then(r => r.json());
 
-  if (!data.success) return showAlert('loginAlert', data.message, 'error');
-  token = data.token;
-  localStorage.setItem('smm_token', token);
-  currentUser = data.user;
-  loadDashboard();
-}
 
 // =============================================
 // ADMIN PANEL CONTROL HANDLERS

