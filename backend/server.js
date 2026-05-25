@@ -131,7 +131,7 @@ app.post('/api/auth/google', async (req, res) => {
 
 // Get profile (auth middleware)
 app.get('/api/profile', requireAuth, (req, res) => {
-  const user = db.prepare('SELECT id, name, email, balance FROM users WHERE id = ?').get(req.userId);
+  const user = db.prepare('SELECT id, name, email, balance, role FROM users WHERE id = ?').get(req.userId);
   res.json({ success: true, user });
 });
 

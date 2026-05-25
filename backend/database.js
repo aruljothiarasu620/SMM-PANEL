@@ -116,11 +116,11 @@ class Statement {
       const user = data.users.find(u => u.email === email && u.password === password);
       return user ? { ...user } : undefined;
     }
-    // 3. SELECT id, name, email, balance FROM users WHERE id = ?
-    if (this.sql.includes('SELECT id, name, email, balance FROM users WHERE id = ?')) {
+    // 3. SELECT id, name, email, balance, role FROM users WHERE id = ?
+    if (this.sql.includes('SELECT id, name, email, balance, role FROM users WHERE id = ?')) {
       const id = params[0];
       const user = data.users.find(u => u.id === id);
-      return user ? { id: user.id, name: user.name, email: user.email, balance: user.balance } : undefined;
+      return user ? { id: user.id, name: user.name, email: user.email, balance: user.balance, role: user.role } : undefined;
     }
     // 4. SELECT * FROM services WHERE id = ?
     if (this.sql.includes('SELECT * FROM services WHERE id = ?')) {
