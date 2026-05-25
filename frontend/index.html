@@ -1,0 +1,1035 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BoostGram — SMM Panel</title>
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+:root {
+  --bg:#0a0a0f; --card:#12121a; --border:rgba(255,255,255,0.08);
+  --accent:#6c63ff; --green:#00e5a0; --red:#ff4757;
+  --text:#f0f0ff; --muted:#888;
+}
+body { background:var(--bg); color:var(--text); font-family:'Segoe UI',sans-serif; min-height:100vh; }
+
+/* ---- NAV ---- */
+.nav {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:14px 32px; border-bottom:0.5px solid var(--border);
+  background:rgba(10,10,15,0.98); position:sticky; top:0; z-index:100;
+}
+.logo { font-size:20px; font-weight:800; }
+.logo span { color:var(--accent); }
+.nav-right { display:flex; align-items:center; gap:16px; }
+.balance-chip {
+  background:rgba(0,229,160,0.1); border:0.5px solid rgba(0,229,160,0.25);
+  color:var(--green); padding:6px 14px; border-radius:20px; font-size:14px; font-weight:600;
+}
+.nav-btn {
+  background:var(--accent); color:#fff; border:none;
+  padding:8px 18px; border-radius:8px; font-size:14px; font-weight:600; cursor:pointer;
+}
+.logout-btn {
+  background:transparent; color:var(--muted); border:0.5px solid var(--border);
+  padding:8px 14px; border-radius:8px; font-size:13px; cursor:pointer;
+}
+
+/* ---- SIDEBAR ---- */
+.layout { display:flex; min-height:calc(100vh - 53px); }
+.sidebar {
+  width:220px; border-right:0.5px solid var(--border);
+  padding:24px 0; flex-shrink:0;
+}
+.menu-item {
+  display:flex; align-items:center; gap:10px;
+  padding:12px 24px; font-size:14px; color:var(--muted);
+  cursor:pointer; transition:all 0.2s; border-left:3px solid transparent;
+}
+.menu-item:hover { color:var(--text); background:rgba(255,255,255,0.03); }
+.menu-item.active { color:var(--accent); border-left-color:var(--accent); background:rgba(108,99,255,0.08); }
+.menu-icon { font-size:18px; }
+
+/* ---- MAIN ---- */
+.main { flex:1; padding:32px; overflow-y:auto; }
+.page { display:none; }
+.page.active { display:block; }
+
+.page-title { font-size:22px; font-weight:700; margin-bottom:6px; }
+.page-sub { color:var(--muted); font-size:14px; margin-bottom:28px; }
+
+/* ---- CARDS ---- */
+.stats-row { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:14px; margin-bottom:28px; }
+.stat-card {
+  background:var(--card); border:0.5px solid var(--border);
+  border-radius:12px; padding:20px;
+}
+.stat-card .lbl { font-size:12px; color:var(--muted); margin-bottom:8px; }
+.stat-card .val { font-size:24px; font-weight:700; }
+.val.green { color:var(--green); }
+.val.accent { color:var(--accent); }
+
+/* ---- FORMS ---- */
+.form-card {
+  background:var(--card); border:0.5px solid var(--border);
+  border-radius:14px; padding:28px; max-width:560px;
+}
+.form-group { margin-bottom:18px; }
+.form-label { font-size:13px; color:var(--muted); display:block; margin-bottom:7px; }
+.form-input, .form-select {
+  width:100%; background:#0d0d14; border:0.5px solid var(--border);
+  color:var(--text); padding:11px 14px; border-radius:8px; font-size:14px;
+}
+.form-input:focus, .form-select:focus { outline:none; border-color:var(--accent); }
+.form-select { appearance:none; cursor:pointer; }
+.submit-btn {
+  width:100%; background:var(--accent); color:#fff; border:none;
+  padding:13px; border-radius:10px; font-size:15px; font-weight:700; cursor:pointer;
+  margin-top:4px;
+}
+.submit-btn:hover { opacity:0.9; }
+.submit-btn:disabled { opacity:0.5; cursor:not-allowed; }
+
+/* ---- CHARGE BOX ---- */
+.charge-box {
+  background:rgba(0,229,160,0.06); border:0.5px solid rgba(0,229,160,0.2);
+  border-radius:10px; padding:14px 18px;
+  display:flex; justify-content:space-between; align-items:center;
+  margin-bottom:18px;
+}
+.charge-box .lbl { font-size:13px; color:var(--muted); }
+.charge-box .amt { font-size:22px; font-weight:800; color:var(--green); }
+
+/* ---- TABLE ---- */
+.table-wrap { overflow-x:auto; }
+table { width:100%; border-collapse:collapse; font-size:13px; }
+th { text-align:left; padding:10px 14px; color:var(--muted); font-weight:500; border-bottom:0.5px solid var(--border); }
+td { padding:12px 14px; border-bottom:0.5px solid rgba(255,255,255,0.04); }
+tr:hover td { background:rgba(255,255,255,0.02); }
+.status-badge {
+  display:inline-block; padding:3px 10px; border-radius:20px;
+  font-size:11px; font-weight:600;
+}
+.s-pending { background:rgba(255,200,0,0.12); color:#ffc800; }
+.s-processing { background:rgba(108,99,255,0.15); color:var(--accent); }
+.s-completed { background:rgba(0,229,160,0.12); color:var(--green); }
+.s-failed { background:rgba(255,71,87,0.12); color:var(--red); }
+
+/* ---- ALERT ---- */
+.alert {
+  padding:12px 16px; border-radius:8px; font-size:14px;
+  margin-bottom:16px; display:none;
+}
+.alert.success { background:rgba(0,229,160,0.1); color:var(--green); border:0.5px solid rgba(0,229,160,0.25); }
+.alert.error { background:rgba(255,71,87,0.1); color:var(--red); border:0.5px solid rgba(255,71,87,0.25); }
+.alert.show { display:block; }
+
+/* ---- LOGIN PAGE ---- */
+#loginPage {
+  display:flex; align-items:center; justify-content:center;
+  min-height:100vh; background:var(--bg);
+}
+.login-box {
+  background:var(--card); border:0.5px solid var(--border);
+  border-radius:16px; padding:40px 36px; width:100%; max-width:400px;
+}
+.login-logo { font-size:28px; font-weight:800; margin-bottom:6px; }
+.login-logo span { color:var(--accent); }
+.login-sub { color:var(--muted); font-size:14px; margin-bottom:28px; }
+.login-tabs { display:flex; gap:0; margin-bottom:24px; border:0.5px solid var(--border); border-radius:8px; overflow:hidden; }
+.ltab { flex:1; padding:9px; text-align:center; cursor:pointer; font-size:14px; color:var(--muted); background:transparent; border:none; transition:all 0.2s; }
+.ltab.active { background:var(--accent); color:#fff; font-weight:600; }
+
+/* ---- RECHARGE PLANS ---- */
+.plans-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:14px; margin-bottom:28px; }
+.plan-card {
+  background:var(--card); border:0.5px solid var(--border);
+  border-radius:12px; padding:20px; text-align:center; cursor:pointer;
+  transition:border-color 0.2s;
+}
+.plan-card:hover, .plan-card.selected { border-color:var(--accent); }
+.plan-card.popular { border-color:rgba(108,99,255,0.5); }
+.plan-amount { font-size:26px; font-weight:800; color:var(--accent); }
+.plan-bonus { font-size:12px; color:var(--green); margin-top:4px; }
+.plan-desc { font-size:12px; color:var(--muted); margin-top:8px; }
+
+.hidden { display:none !important; }
+.admin-subpage { display:none; }
+.admin-subpage.active { display:block; }
+</style>
+</head>
+<body>
+
+<!-- ============================== -->
+<!-- LOGIN PAGE -->
+<!-- ============================== -->
+<div id="loginPage">
+  <div class="login-box">
+    <div class="login-logo">Boost<span>Gram</span></div>
+    <div class="login-sub">India's #1 SMM Panel</div>
+
+    <div class="login-tabs">
+      <button class="ltab active" onclick="switchTab('login')">Login</button>
+      <button class="ltab" onclick="switchTab('register')">Register</button>
+    </div>
+
+    <div id="loginAlert" class="alert"></div>
+
+    <!-- Login Form -->
+    <div id="loginForm">
+      <div class="form-group">
+        <label class="form-label">Email</label>
+        <input class="form-input" id="loginEmail" type="email" placeholder="you@email.com" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Password</label>
+        <input class="form-input" id="loginPassword" type="password" placeholder="••••••••" />
+      </div>
+      <button class="submit-btn" onclick="doLogin()">Login →</button>
+    </div>
+
+    <!-- Register Form -->
+    <div id="registerForm" class="hidden">
+      <div class="form-group">
+        <label class="form-label">Full Name</label>
+        <input class="form-input" id="regName" type="text" placeholder="Your Name" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Email</label>
+        <input class="form-input" id="regEmail" type="email" placeholder="you@email.com" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Password</label>
+        <input class="form-input" id="regPassword" type="password" placeholder="Min 6 characters" />
+      </div>
+      <button class="submit-btn" onclick="doRegister()">Create Account →</button>
+    </div>
+
+    <!-- Google Sign-In Button -->
+    <div style="margin-top: 20px; display: flex; flex-direction: column; align-items: center; gap: 12px; width: 100%;">
+      <div style="width: 100%; height: 0.5px; background: var(--border); position: relative; margin: 8px 0;">
+        <span style="position: absolute; top: -10px; left: 50%; transform: translateX(-50%); background: var(--card); padding: 0 10px; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px;">Or</span>
+      </div>
+      <div id="googleBtnContainer" style="display: flex; justify-content: center; width: 100%; min-height: 40px;"></div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ============================== -->
+<!-- DASHBOARD -->
+<!-- ============================== -->
+<div id="dashboard" class="hidden">
+  <nav class="nav">
+    <div class="logo">Boost<span>Gram</span></div>
+    <div class="nav-right">
+      <div class="balance-chip">💰 ₹<span id="navBalance">0.00</span></div>
+      <span id="navName" style="font-size:14px;color:var(--muted)"></span>
+      <button class="logout-btn" onclick="doLogout()">Logout</button>
+    </div>
+  </nav>
+
+  <div class="layout">
+    <div class="sidebar">
+      <div class="menu-item active" onclick="showPanel('home')"><span class="menu-icon">🏠</span> Dashboard</div>
+      <div class="menu-item" onclick="showPanel('newOrder')"><span class="menu-icon">➕</span> New Order</div>
+      <div class="menu-item" onclick="showPanel('orders')"><span class="menu-icon">📋</span> My Orders</div>
+      <div class="menu-item" onclick="showPanel('wallet')"><span class="menu-icon">💳</span> Add Funds</div>
+      <div class="menu-item" onclick="showPanel('transactions')"><span class="menu-icon">📊</span> Transactions</div>
+      <div class="menu-item hidden" id="adminMenuItem" onclick="showPanel('admin')"><span class="menu-icon">👑</span> Admin Panel</div>
+    </div>
+
+    <div class="main">
+
+      <!-- HOME PANEL -->
+      <div id="panel-home" class="page active">
+        <div class="page-title">Dashboard</div>
+        <div class="page-sub">Welcome back! Here's your overview.</div>
+        <div class="stats-row">
+          <div class="stat-card"><div class="lbl">Wallet Balance</div><div class="val green">₹<span id="dashBalance">0.00</span></div></div>
+          <div class="stat-card"><div class="lbl">Total Orders</div><div class="val accent" id="dashOrders">0</div></div>
+          <div class="stat-card"><div class="lbl">Completed</div><div class="val green" id="dashCompleted">0</div></div>
+          <div class="stat-card"><div class="lbl">Pending</div><div class="val" id="dashPending">0</div></div>
+        </div>
+        <div style="background:var(--card);border:0.5px solid var(--border);border-radius:12px;padding:20px;">
+          <div style="font-size:15px;font-weight:600;margin-bottom:12px;">Quick Actions</div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;">
+            <button class="nav-btn" onclick="showPanel('newOrder')">➕ New Order</button>
+            <button class="nav-btn" style="background:rgba(0,229,160,0.15);color:var(--green);" onclick="showPanel('wallet')">💳 Add Funds</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- NEW ORDER PANEL -->
+      <div id="panel-newOrder" class="page">
+        <div class="page-title">New Order</div>
+        <div class="page-sub">Select a service and fill the details below</div>
+        <div id="orderAlert" class="alert"></div>
+        <div class="form-card">
+          <div class="form-group">
+            <label class="form-label">Platform</label>
+            <select class="form-select" id="platformSelect" onchange="loadServices()">
+              <option value="instagram">📸 Instagram</option>
+              <option value="youtube">▶️ YouTube</option>
+              <option value="facebook">👤 Facebook</option>
+              <option value="tiktok">🎵 TikTok</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Select Service</label>
+            <select class="form-select" id="serviceSelect" onchange="updateServiceInfo()">
+              <option value="">Loading...</option>
+            </select>
+          </div>
+          <div id="serviceInfo" style="background:rgba(108,99,255,0.06);border:0.5px solid rgba(108,99,255,0.2);border-radius:8px;padding:12px;margin-bottom:16px;font-size:13px;color:var(--muted);display:none;">
+            <span id="svcInfoText"></span>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Profile / Post Link</label>
+            <input class="form-input" id="orderLink" type="url" placeholder="https://instagram.com/yourprofile" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Quantity</label>
+            <input class="form-input" id="orderQty" type="number" value="1000" min="100" step="100" oninput="calcCharge()" />
+          </div>
+          <div class="charge-box">
+            <div><div class="lbl">Total Charge</div><div style="font-size:12px;color:var(--muted)" id="qtyInfo">1000 units</div></div>
+            <div class="amt">₹<span id="orderTotal">0.00</span></div>
+          </div>
+          <button class="submit-btn" id="placeOrderBtn" onclick="placeOrder()">Place Order →</button>
+        </div>
+      </div>
+
+      <!-- ORDERS PANEL -->
+      <div id="panel-orders" class="page">
+        <div class="page-title">My Orders</div>
+        <div class="page-sub">Track all your orders here</div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>#ID</th><th>Service</th><th>Link</th><th>Qty</th><th>Charge</th><th>Status</th><th>Date</th>
+              </tr>
+            </thead>
+            <tbody id="ordersTable">
+              <tr><td colspan="7" style="text-align:center;color:var(--muted);padding:32px">Loading orders...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- WALLET PANEL -->
+      <div id="panel-wallet" class="page">
+        <div class="page-title">Add Funds</div>
+        <div class="page-sub">Choose a plan or enter custom amount</div>
+        <div id="walletAlert" class="alert"></div>
+
+        <div class="plans-grid">
+          <div class="plan-card" onclick="selectPlan(199, this)">
+            <div class="plan-amount">₹199</div>
+            <div class="plan-bonus">Get ₹200 balance</div>
+            <div class="plan-desc">Starter Pack</div>
+          </div>
+          <div class="plan-card popular" onclick="selectPlan(499, this)">
+            <div class="plan-amount">₹499</div>
+            <div class="plan-bonus">⭐ Get ₹550 balance</div>
+            <div class="plan-desc">Most Popular</div>
+          </div>
+          <div class="plan-card" onclick="selectPlan(999, this)">
+            <div class="plan-amount">₹999</div>
+            <div class="plan-bonus">Get ₹1200 balance</div>
+            <div class="plan-desc">Business Pack</div>
+          </div>
+          <div class="plan-card" onclick="selectPlan(1999, this)">
+            <div class="plan-amount">₹1999</div>
+            <div class="plan-bonus">Get ₹2500 balance</div>
+            <div class="plan-desc">Pro Pack</div>
+          </div>
+        </div>
+
+        <div class="form-card" style="max-width:420px">
+          <div class="form-group">
+            <label class="form-label">Amount (₹)</label>
+            <input class="form-input" id="rechargeAmount" type="number" placeholder="Enter amount (min ₹10)" min="10" />
+          </div>
+          <button class="submit-btn" onclick="startPayment()">Pay with Razorpay →</button>
+        </div>
+      </div>
+
+      <!-- TRANSACTIONS PANEL -->
+      <div id="panel-transactions" class="page">
+        <div class="page-title">Transactions</div>
+        <div class="page-sub">Your wallet recharge history</div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>#ID</th><th>Amount</th><th>Razorpay ID</th><th>Status</th><th>Date</th></tr>
+            </thead>
+            <tbody id="txnTable">
+              <tr><td colspan="5" style="text-align:center;color:var(--muted);padding:32px">Loading...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ADMIN PANEL -->
+      <div id="panel-admin" class="page">
+        <div class="page-title">👑 Admin Control Center</div>
+        <div class="page-sub">Global platform statistics, user databases, SMM APIs, and orders.</div>
+        
+        <!-- Admin Navigation Sub-Tabs -->
+        <div style="display: flex; gap: 10px; margin-bottom: 24px; border-bottom: 0.5px solid var(--border); padding-bottom: 12px; flex-wrap: wrap;">
+          <button class="nav-btn" style="background: rgba(108,99,255,0.15); color: var(--accent); border: 0.5px solid var(--accent);" onclick="switchAdminTab('adminStats')">📊 Overview Stats</button>
+          <button class="nav-btn" style="background: transparent; border: 0.5px solid var(--border); color: var(--muted);" onclick="switchAdminTab('adminUsers')">👥 User Database</button>
+          <button class="nav-btn" style="background: transparent; border: 0.5px solid var(--border); color: var(--muted);" onclick="switchAdminTab('adminOrders')">📋 Global Orders</button>
+          <button class="nav-btn" style="background: transparent; border: 0.5px solid var(--border); color: var(--muted);" onclick="switchAdminTab('adminServices')">🔌 SMM Services</button>
+        </div>
+
+        <div id="adminAlert" class="alert"></div>
+
+        <!-- SUB-PANEL: STATS -->
+        <div id="adminSub-adminStats" class="admin-subpage active">
+          <div class="stats-row">
+            <div class="stat-card"><div class="lbl">Total Users</div><div class="val accent" id="adminTotalUsers">0</div></div>
+            <div class="stat-card"><div class="lbl">Total System Balance</div><div class="val green" id="adminTotalBalance">₹0.00</div></div>
+            <div class="stat-card"><div class="lbl">Total Orders Placed</div><div class="val accent" id="adminTotalOrders">0</div></div>
+            <div class="stat-card"><div class="lbl">Provider API Balance</div><div class="val green" id="adminProviderBalance">₹0.00</div></div>
+          </div>
+          <div style="background: var(--card); border: 0.5px solid var(--border); border-radius: 12px; padding: 24px; margin-top: 14px;">
+            <h3 style="margin-bottom: 12px;">SMM Provider Connection Status</h3>
+            <p style="font-size: 14px; color: var(--muted); margin-bottom: 18px;" id="adminProviderStatus">Checking API status...</p>
+            <button class="nav-btn" onclick="checkProviderBalance()">🔄 Refresh Provider Balance</button>
+          </div>
+        </div>
+
+        <!-- SUB-PANEL: USERS -->
+        <div id="adminSub-adminUsers" class="admin-subpage">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+            <h3 style="font-size: 16px;">Registered Users Database</h3>
+            <input class="form-input" id="adminUserSearch" type="text" placeholder="🔍 Search users..." style="max-width: 250px; padding: 6px 12px; font-size: 13px;" oninput="filterAdminUsers()" />
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>#ID</th><th>Name</th><th>Email</th><th>Role</th><th>Balance</th><th>Reg Date</th><th>Action</th>
+                </tr>
+              </thead>
+              <tbody id="adminUsersTable">
+                <tr><td colspan="7" style="text-align:center;color:var(--muted);padding:32px">Loading...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- SUB-PANEL: ORDERS -->
+        <div id="adminSub-adminOrders" class="admin-subpage">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+            <h3 style="font-size: 16px;">Global Orders Manager</h3>
+            <input class="form-input" id="adminOrderSearch" type="text" placeholder="🔍 Search Orders (ID/Link)..." style="max-width: 280px; padding: 6px 12px; font-size: 13px;" oninput="filterAdminOrders()" />
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>#ID</th><th>User</th><th>Service</th><th>Link</th><th>Qty</th><th>Charge</th><th>Status</th><th>Provider ID</th><th>Sync</th>
+                </tr>
+              </thead>
+              <tbody id="adminOrdersTable">
+                <tr><td colspan="9" style="text-align:center;color:var(--muted);padding:32px">Loading...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- SUB-PANEL: SERVICES -->
+        <div id="adminSub-adminServices" class="admin-subpage">
+          <div style="background: var(--card); border: 0.5px solid var(--border); border-radius: 12px; padding: 24px; max-width: 600px;">
+            <h3 style="margin-bottom: 8px;">Import Services from Provider</h3>
+            <p style="font-size: 13px; color: var(--muted); margin-bottom: 18px;">
+              This will import all wholesale services from the connected SMM API provider. 
+              It automatically maps them and adds a <strong>30% markup</strong> profit margin to the rate charged to users.
+            </p>
+            <button class="nav-btn" id="importServicesBtn" onclick="importServicesFromProvider()">🔌 Import Services Now</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- MODAL: MANAGE BALANCE -->
+      <div id="balanceModal" style="display:none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 1000; align-items: center; justify-content: center;">
+        <div class="form-card" style="width: 100%; max-width: 400px; border-radius: 16px; position: relative;">
+          <h3 style="margin-bottom: 6px;" id="modalTitle">Adjust Balance</h3>
+          <p style="font-size:12px; color:var(--muted); margin-bottom: 18px;" id="modalSub">Adjust funds for user: <span id="modalUserEmail"></span></p>
+          
+          <div class="form-group">
+            <label class="form-label">Adjustment Type</label>
+            <select class="form-select" id="adjType">
+              <option value="credit">💰 Credit (Add Funds)</option>
+              <option value="debit">💸 Debit (Subtract Funds)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Amount (₹)</label>
+            <input class="form-input" id="adjAmount" type="number" min="1" placeholder="Enter amount" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Note / Rationale</label>
+            <input class="form-input" id="adjNote" type="text" placeholder="Manual recharge / correction" />
+          </div>
+
+          <div style="display: flex; gap: 10px; margin-top: 24px;">
+            <button class="submit-btn" style="flex:1; background:var(--green);" onclick="submitBalanceAdjust()">Apply Adjustment</button>
+            <button class="submit-btn" style="flex:1; background:transparent; border: 0.5px solid var(--border); color: var(--muted);" onclick="closeBalanceModal()">Cancel</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+const API = (window.location.origin && !window.location.origin.startsWith('file:')) 
+  ? window.location.origin + '/api' 
+  : 'http://localhost:3000/api';
+let token = localStorage.getItem('smm_token');
+let currentUser = null;
+let servicesCache = {};
+let adminUsersCache = [];
+let adminOrdersCache = [];
+
+// =============================================
+// INIT
+// =============================================
+window.onload = async function() {
+  // Fetch Config (Google Client ID)
+  try {
+    const res = await fetch(API.replace('/api', '/api/config')).then(r => r.json());
+    if (res.google_client_id && res.google_client_id !== 'YOUR_GOOGLE_CLIENT_ID_HERE') {
+      google.accounts.id.initialize({
+        client_id: res.google_client_id,
+        callback: handleGoogleLogin
+      });
+      google.accounts.id.renderButton(
+        document.getElementById("googleBtnContainer"),
+        { theme: "dark", size: "large", width: 280, shape: "rectangular" }
+      );
+    } else {
+      document.getElementById("googleBtnContainer").innerHTML = 
+        `<div style="font-size:11px;color:var(--muted);text-align:center">Google Client ID not configured in backend .env</div>`;
+    }
+  } catch (err) {
+    console.error('Failed to load Google Client ID config:', err);
+  }
+
+  if (token) loadDashboard();
+};
+
+async function api(path, method='GET', body=null) {
+  const opts = {
+    method,
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }
+  };
+  if (body) opts.body = JSON.stringify(body);
+  const res = await fetch(API + path, opts);
+  return res.json();
+}
+
+// =============================================
+// AUTH
+// =============================================
+function switchTab(tab) {
+  document.querySelectorAll('.ltab').forEach(t => t.classList.remove('active'));
+  event.target.classList.add('active');
+  document.getElementById('loginForm').classList.toggle('hidden', tab !== 'login');
+  document.getElementById('registerForm').classList.toggle('hidden', tab !== 'register');
+  hideAlert('loginAlert');
+}
+
+async function doLogin() {
+  const email = document.getElementById('loginEmail').value;
+  const password = document.getElementById('loginPassword').value;
+  if (!email || !password) return showAlert('loginAlert', 'Fill all fields', 'error');
+
+  const data = await fetch(API + '/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, password })
+  }).then(r => r.json());
+
+  if (!data.success) return showAlert('loginAlert', data.message, 'error');
+  token = data.token;
+  localStorage.setItem('smm_token', token);
+  currentUser = data.user;
+  loadDashboard();
+}
+
+async function doRegister() {
+  const name = document.getElementById('regName').value;
+  const email = document.getElementById('regEmail').value;
+  const password = document.getElementById('regPassword').value;
+  if (!name || !email || !password) return showAlert('loginAlert', 'Fill all fields', 'error');
+
+  const data = await fetch(API + '/register', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, email, password })
+  }).then(r => r.json());
+
+  if (!data.success) return showAlert('loginAlert', data.message, 'error');
+  showAlert('loginAlert', 'Registered! Please login.', 'success');
+  switchTab('login');
+}
+
+function doLogout() {
+  localStorage.removeItem('smm_token');
+  token = null;
+  document.getElementById('dashboard').classList.add('hidden');
+  document.getElementById('loginPage').style.display = 'flex';
+}
+
+async function loadDashboard() {
+  const data = await api('/profile');
+  if (!data.success) { doLogout(); return; }
+  currentUser = data.user;
+  document.getElementById('loginPage').style.display = 'none';
+  document.getElementById('dashboard').classList.remove('hidden');
+  updateBalanceUI(currentUser.balance);
+  document.getElementById('navName').textContent = currentUser.name;
+  
+  // Show admin menu if role is admin
+  const adminMenu = document.getElementById('adminMenuItem');
+  if (currentUser.role === 'admin') {
+    adminMenu.classList.remove('hidden');
+  } else {
+    adminMenu.classList.add('hidden');
+  }
+
+  loadHomeStats();
+  loadServices();
+}
+
+// =============================================
+// DASHBOARD HOME
+// =============================================
+async function loadHomeStats() {
+  const data = await api('/orders');
+  if (!data.success) return;
+  const orders = data.orders;
+  document.getElementById('dashOrders').textContent = orders.length;
+  document.getElementById('dashCompleted').textContent = orders.filter(o => o.status === 'completed').length;
+  document.getElementById('dashPending').textContent = orders.filter(o => o.status === 'pending').length;
+  document.getElementById('dashBalance').textContent = parseFloat(currentUser.balance).toFixed(2);
+}
+
+// =============================================
+// SERVICES & ORDER
+// =============================================
+async function loadServices() {
+  const platform = document.getElementById('platformSelect').value;
+  if (servicesCache[platform]) { renderServices(platform); return; }
+
+  const data = await api('/services/' + platform);
+  if (data.success) { servicesCache[platform] = data.services; renderServices(platform); }
+}
+
+function renderServices(platform) {
+  const sel = document.getElementById('serviceSelect');
+  sel.innerHTML = '<option value="">Select a service</option>';
+  servicesCache[platform].forEach(s => {
+    sel.innerHTML += `<option value="${s.id}" data-rate="${s.rate}" data-min="${s.min_qty}" data-max="${s.max_qty}" data-delivery="${s.delivery_time}">${s.name} — ₹${s.rate}/1000</option>`;
+  });
+  updateServiceInfo();
+}
+
+function updateServiceInfo() {
+  const opt = document.getElementById('serviceSelect').selectedOptions[0];
+  const info = document.getElementById('serviceInfo');
+  if (!opt || !opt.dataset.rate) { info.style.display = 'none'; return; }
+  info.style.display = 'block';
+  document.getElementById('svcInfoText').textContent =
+    `Min: ${Number(opt.dataset.min).toLocaleString()} | Max: ${Number(opt.dataset.max).toLocaleString()} | Delivery: ${opt.dataset.delivery}`;
+  document.getElementById('orderQty').min = opt.dataset.min;
+  document.getElementById('orderQty').value = opt.dataset.min;
+  calcCharge();
+}
+
+function calcCharge() {
+  const opt = document.getElementById('serviceSelect').selectedOptions[0];
+  const qty = parseInt(document.getElementById('orderQty').value) || 0;
+  const rate = parseFloat(opt?.dataset?.rate) || 0;
+  const total = (rate * qty / 1000).toFixed(2);
+  document.getElementById('orderTotal').textContent = total;
+  document.getElementById('qtyInfo').textContent = qty.toLocaleString() + ' units';
+}
+
+async function placeOrder() {
+  const service_id = document.getElementById('serviceSelect').value;
+  const link = document.getElementById('orderLink').value;
+  const quantity = parseInt(document.getElementById('orderQty').value);
+  if (!service_id) return showAlert('orderAlert', 'Select a service', 'error');
+  if (!link) return showAlert('orderAlert', 'Enter profile/post link', 'error');
+  if (!quantity) return showAlert('orderAlert', 'Enter quantity', 'error');
+
+  const btn = document.getElementById('placeOrderBtn');
+  btn.disabled = true; btn.textContent = 'Placing...';
+
+  const data = await api('/orders', 'POST', { service_id, link, quantity });
+  btn.disabled = false; btn.textContent = 'Place Order →';
+
+  if (!data.success) return showAlert('orderAlert', data.message, 'error');
+  showAlert('orderAlert', `✅ Order #${data.order_id} placed! Charged ₹${data.charge}`, 'success');
+  updateBalanceUI(data.new_balance);
+}
+
+// =============================================
+// ORDERS TABLE
+// =============================================
+async function loadOrders() {
+  const data = await api('/orders');
+  const tbody = document.getElementById('ordersTable');
+  if (!data.success || !data.orders.length) {
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:32px">No orders yet</td></tr>';
+    return;
+  }
+  tbody.innerHTML = data.orders.map(o => `
+    <tr>
+      <td>#${o.id}</td>
+      <td>${o.service_name}</td>
+      <td style="max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+        <a href="${o.link}" target="_blank" style="color:var(--accent)">${o.link}</a>
+      </td>
+      <td>${o.quantity.toLocaleString()}</td>
+      <td>₹${parseFloat(o.charge).toFixed(2)}</td>
+      <td><span class="status-badge s-${o.status}">${o.status}</span></td>
+      <td style="color:var(--muted)">${o.created_at?.slice(0,10)}</td>
+    </tr>`).join('');
+}
+
+// =============================================
+// RAZORPAY PAYMENT
+// =============================================
+function selectPlan(amount, el) {
+  document.querySelectorAll('.plan-card').forEach(c => c.classList.remove('selected'));
+  el.classList.add('selected');
+  document.getElementById('rechargeAmount').value = amount;
+}
+
+async function startPayment() {
+  const amount = parseFloat(document.getElementById('rechargeAmount').value);
+  if (!amount || amount < 10) return showAlert('walletAlert', 'Minimum recharge is ₹10', 'error');
+
+  const data = await api('/payment/create', 'POST', { amount });
+  if (!data.success) return showAlert('walletAlert', data.message, 'error');
+
+  const options = {
+    key: data.key,
+    amount: data.amount,
+    currency: data.currency,
+    name: 'BoostGram',
+    description: 'Wallet Recharge',
+    order_id: data.order_id,
+    handler: async (response) => {
+      const verify = await api('/payment/verify', 'POST', {
+        razorpay_order_id: response.razorpay_order_id,
+        razorpay_payment_id: response.razorpay_payment_id,
+        razorpay_signature: response.razorpay_signature,
+      });
+      if (verify.success) {
+        showAlert('walletAlert', verify.message, 'success');
+        updateBalanceUI(verify.new_balance);
+      } else {
+        showAlert('walletAlert', 'Payment verification failed!', 'error');
+      }
+    },
+    prefill: { name: currentUser?.name, email: currentUser?.email },
+    theme: { color: '#6c63ff' },
+    modal: { ondismiss: () => showAlert('walletAlert', 'Payment cancelled', 'error') }
+  };
+
+  const rzp = new Razorpay(options);
+  rzp.open();
+}
+
+// =============================================
+// TRANSACTIONS TABLE
+// =============================================
+async function loadTransactions() {
+  const data = await api('/transactions');
+  const tbody = document.getElementById('txnTable');
+  if (!data.success || !data.transactions.length) {
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:32px">No transactions yet</td></tr>';
+    return;
+  }
+  tbody.innerHTML = data.transactions.map(t => `
+    <tr>
+      <td>#${t.id}</td>
+      <td style="color:var(--green);font-weight:600">₹${parseFloat(t.amount).toFixed(2)}</td>
+      <td style="color:var(--muted);font-size:12px">${t.razorpay_payment_id || '-'}</td>
+      <td><span class="status-badge s-${t.status}">${t.status}</span></td>
+      <td style="color:var(--muted)">${t.created_at?.slice(0,10)}</td>
+    </tr>`).join('');
+}
+
+// =============================================
+// PANEL NAVIGATION
+// =============================================
+function showPanel(id) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.menu-item').forEach(m => m.classList.remove('active'));
+  document.getElementById('panel-' + id).classList.add('active');
+  event.currentTarget.classList.add('active');
+  if (id === 'orders') loadOrders();
+  if (id === 'transactions') loadTransactions();
+}
+
+// =============================================
+// HELPERS
+// =============================================
+function updateBalanceUI(bal) {
+  const b = parseFloat(bal).toFixed(2);
+  document.getElementById('navBalance').textContent = b;
+  document.getElementById('dashBalance').textContent = b;
+  if (currentUser) currentUser.balance = bal;
+}
+
+function showAlert(id, msg, type) {
+  const el = document.getElementById(id);
+  el.textContent = msg;
+  el.className = `alert ${type} show`;
+  setTimeout(() => el.classList.remove('show'), 4000);
+}
+
+function hideAlert(id) {
+  document.getElementById(id).classList.remove('show');
+}
+
+// =============================================
+// GOOGLE AUTHENTICATION HANDLER
+// =============================================
+async function handleGoogleLogin(googleRes) {
+  const credential = googleRes.credential;
+  
+  const data = await fetch(API + '/auth/google', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ credential })
+  }).then(r => r.json());
+
+  if (!data.success) return showAlert('loginAlert', data.message, 'error');
+  token = data.token;
+  localStorage.setItem('smm_token', token);
+  currentUser = data.user;
+  loadDashboard();
+}
+
+// =============================================
+// ADMIN PANEL CONTROL HANDLERS
+// =============================================
+function switchAdminTab(id) {
+  document.querySelectorAll('.admin-subpage').forEach(p => p.style.display = 'none');
+  document.getElementById('adminSub-' + id).style.display = 'block';
+  
+  // Reset tab button colors
+  event.currentTarget.parentNode.querySelectorAll('button').forEach(b => {
+    b.style.background = 'transparent';
+    b.style.borderColor = 'var(--border)';
+    b.style.color = 'var(--muted)';
+  });
+  event.currentTarget.style.background = 'rgba(108,99,255,0.15)';
+  event.currentTarget.style.borderColor = 'var(--accent)';
+  event.currentTarget.style.color = 'var(--accent)';
+
+  if (id === 'adminUsers') loadAdminUsers();
+  if (id === 'adminOrders') loadAdminOrders();
+  if (id === 'adminStats') checkProviderBalance();
+}
+
+async function loadAdminStats(users, orders) {
+  document.getElementById('adminTotalUsers').textContent = users.length;
+  const totalBal = users.reduce((acc, u) => acc + (u.balance || 0), 0);
+  document.getElementById('adminTotalBalance').textContent = '₹' + totalBal.toFixed(2);
+  document.getElementById('adminTotalOrders').textContent = orders.length;
+}
+
+async function checkProviderBalance() {
+  const statusText = document.getElementById('adminProviderStatus');
+  statusText.textContent = '🔄 Loading SMM API Provider Details...';
+  try {
+    const data = await api('/admin/provider-balance');
+    if (data.success) {
+      document.getElementById('adminProviderBalance').textContent = '₹' + parseFloat(data.balance || 0).toFixed(2);
+      statusText.innerHTML = `✅ Provider API Connected. Currency: <strong>${data.currency || 'USD'}</strong>. wholesale rates are active.`;
+    } else {
+      statusText.innerHTML = `⚠️ SMM API Provider disconnected. Reason: <em>${data.error || 'Check SMM API key in .env'}</em>`;
+    }
+  } catch (err) {
+    statusText.textContent = '❌ Failed to connect backend provider services.';
+  }
+}
+
+async function loadAdminUsers() {
+  const data = await api('/admin/users');
+  if (!data.success) return showAlert('adminAlert', data.message, 'error');
+  adminUsersCache = data.users;
+  renderAdminUsers(adminUsersCache);
+  
+  // Load orders in background to compile stats
+  const oData = await api('/admin/orders');
+  if (oData.success) {
+    adminOrdersCache = oData.orders;
+    loadAdminStats(adminUsersCache, adminOrdersCache);
+  }
+}
+
+function renderAdminUsers(users) {
+  const tbody = document.getElementById('adminUsersTable');
+  if (!users.length) {
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:24px">No users registered yet</td></tr>';
+    return;
+  }
+  tbody.innerHTML = users.map(u => `
+    <tr>
+      <td>#${u.id}</td>
+      <td><strong>${u.name}</strong></td>
+      <td>${u.email}</td>
+      <td><span class="status-badge" style="background:${u.role === 'admin' ? 'rgba(255,200,0,0.15)' : 'rgba(255,255,255,0.05)'};color:${u.role === 'admin' ? '#ffc800' : 'var(--text)'}">${u.role}</span></td>
+      <td style="color:var(--green);font-weight:600">₹${parseFloat(u.balance || 0).toFixed(2)}</td>
+      <td style="color:var(--muted)">${u.created_at?.slice(0,10)}</td>
+      <td>
+        <button class="nav-btn" style="padding:4px 10px;font-size:11px;background:var(--accent)" onclick="openBalanceModal(${u.id}, '${u.email}', ${u.balance})">Adjust Balance</button>
+      </td>
+    </tr>`).join('');
+}
+
+function filterAdminUsers() {
+  const q = document.getElementById('adminUserSearch').value.toLowerCase();
+  const filtered = adminUsersCache.filter(u => 
+    u.name.toLowerCase().includes(q) || 
+    u.email.toLowerCase().includes(q) || 
+    u.id.toString() === q
+  );
+  renderAdminUsers(filtered);
+}
+
+async function loadAdminOrders() {
+  const data = await api('/admin/orders');
+  if (!data.success) return showAlert('adminAlert', data.message, 'error');
+  adminOrdersCache = data.orders;
+  renderAdminOrders(adminOrdersCache);
+}
+
+function renderAdminOrders(orders) {
+  const tbody = document.getElementById('adminOrdersTable');
+  if (!orders.length) {
+    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--muted);padding:24px">No orders found in system</td></tr>';
+    return;
+  }
+  tbody.innerHTML = orders.map(o => `
+    <tr>
+      <td>#${o.id}</td>
+      <td style="color:var(--muted)">${o.user_name}</td>
+      <td><strong>${o.service_name}</strong></td>
+      <td style="max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"><a href="${o.link}" target="_blank" style="color:var(--accent)">${o.link}</a></td>
+      <td>${o.quantity.toLocaleString()}</td>
+      <td>₹${parseFloat(o.charge).toFixed(2)}</td>
+      <td>
+        <select class="form-select" style="padding:4px 8px;font-size:11px;background:#0d0d14;width:auto;" onchange="updateOrderStatusAdmin(${o.id}, this.value)">
+          <option value="pending" ${o.status === 'pending' ? 'selected' : ''}>Pending</option>
+          <option value="processing" ${o.status === 'processing' ? 'selected' : ''}>Processing</option>
+          <option value="completed" ${o.status === 'completed' ? 'selected' : ''}>Completed</option>
+          <option value="partial" ${o.status === 'partial' ? 'selected' : ''}>Partial</option>
+          <option value="cancelled" ${o.status === 'cancelled' ? 'selected' : ''}>Cancelled</option>
+          <option value="failed" ${o.status === 'failed' ? 'selected' : ''}>Failed</option>
+        </select>
+      </td>
+      <td style="color:var(--muted);font-size:11px">${o.provider_order_id || 'manual'}</td>
+      <td>
+        ${o.provider_order_id ? `<button class="nav-btn" style="padding:2px 6px;font-size:10px;background:rgba(0,229,160,0.15);color:var(--green);" onclick="syncOrderAdmin(${o.id})">Sync</button>` : '-'}
+      </td>
+    </tr>`).join('');
+}
+
+function filterAdminOrders() {
+  const q = document.getElementById('adminOrderSearch').value.toLowerCase();
+  const filtered = adminOrdersCache.filter(o => 
+    o.id.toString() === q ||
+    o.link.toLowerCase().includes(q) ||
+    o.user_name.toLowerCase().includes(q) ||
+    o.service_name.toLowerCase().includes(q)
+  );
+  renderAdminOrders(filtered);
+}
+
+async function updateOrderStatusAdmin(orderId, status) {
+  const res = await api(`/admin/orders/${orderId}`, 'PUT', { status });
+  if (res.success) {
+    showAlert('adminAlert', `Order #${orderId} status set to ${status}`, 'success');
+    loadAdminOrders();
+  } else {
+    showAlert('adminAlert', res.message, 'error');
+  }
+}
+
+async function syncOrderAdmin(orderId) {
+  const res = await api(`/admin/orders/${orderId}/sync`);
+  if (res.success) {
+    showAlert('adminAlert', `Synced order #${orderId}. Current status: ${res.status}`, 'success');
+    loadAdminOrders();
+  } else {
+    showAlert('adminAlert', res.message, 'error');
+  }
+}
+
+async function importServicesFromProvider() {
+  const btn = document.getElementById('importServicesBtn');
+  btn.disabled = true; btn.textContent = 'Importing...';
+  try {
+    const res = await api('/admin/import-services', 'POST');
+    if (res.success) {
+      showAlert('adminAlert', res.message, 'success');
+    } else {
+      showAlert('adminAlert', res.message, 'error');
+    }
+  } catch (err) {
+    showAlert('adminAlert', 'Failed to communicate with provider API', 'error');
+  }
+  btn.disabled = false; btn.textContent = '🔌 Import Services Now';
+}
+
+let activeUserId = null;
+function openBalanceModal(userId, email, currentBalance) {
+  activeUserId = userId;
+  document.getElementById('modalUserEmail').textContent = email;
+  document.getElementById('adjAmount').value = '';
+  document.getElementById('adjNote').value = '';
+  document.getElementById('balanceModal').style.display = 'flex';
+}
+
+function closeBalanceModal() {
+  document.getElementById('balanceModal').style.display = 'none';
+  activeUserId = null;
+}
+
+async function submitBalanceAdjust() {
+  const type = document.getElementById('adjType').value;
+  const rawAmt = parseFloat(document.getElementById('adjAmount').value);
+  const note = document.getElementById('adjNote').value;
+  
+  if (isNaN(rawAmt) || rawAmt <= 0) return alert('Enter valid positive amount');
+  const amount = type === 'credit' ? rawAmt : -rawAmt;
+
+  const res = await api(`/admin/users/${activeUserId}/balance`, 'POST', { amount, note });
+  if (res.success) {
+    showAlert('adminAlert', res.message, 'success');
+    closeBalanceModal();
+    loadAdminUsers();
+  } else {
+    alert(res.message);
+  }
+}
+</script>
+</body>
+</html>

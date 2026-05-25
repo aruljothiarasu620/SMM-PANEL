@@ -1,0 +1,22 @@
+# Node modules
+node_modules/
+npm-debug.log*
+
+# Environment variables (NEVER push these!)
+backend/.env
+.env
+.env.*
+
+# Database file (auto-generated locally)
+backend/db.json
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Old/backup directories
+SMM CLAUDE FILE/
+files/
