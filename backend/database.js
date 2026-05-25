@@ -1,7 +1,30 @@
 const fs = require('fs');
 const path = require('path');
 
-const dbPath = path.join(__dirname, 'db.json');
+let dbPath = path.join(__dirname, 'db.json');
+
+// Check if running on Vercel or a serverless/production environment
+if (process.env.VERCEL || process.env.NODE_ENV === 'production' || !__dirname.startsWith('c:')) {
+  const tempPath = path.join('/tmp', 'db.json');
+  try {
+    if (!fs.existsSync(tempPath)) {
+      if (fs.existsSync(dbPath)) {
+        fs.copyFileSync(dbPath, tempPath);
+      } else {
+        fs.writeFileSync(tempPath, JSON.stringify({
+          users: [],
+          services: [],
+          orders: [],
+          transactions: []
+        }, null, 2), 'utf8');
+      }
+    }
+    dbPath = tempPath;
+    console.log('📦 Redirected JSON DB to writable /tmp path:', dbPath);
+  } catch (err) {
+    console.error('⚠️ Could not redirect to /tmp, using default path:', err);
+  }
+}
 
 // Helper to read/write JSON
 function readData() {
@@ -26,7 +49,13 @@ function readData() {
 }
 
 function writeData(data) {
-  fs.writeFileSync(dbPath, JSON.stringify(data, null, 2), 'utf8');
+  try {
+    fs.writeFileSync(dbPath, JSON.stringify(data, null, 2), 'utf8');
+  } catch (err) {
+    console.error('⚠️ Error writing database:', err);
+    // In-memory fallback
+    cachedData = data;
+  }
 }
 
 // In-memory caching for faster speed and better consistency during a request
