@@ -26,27 +26,44 @@ if (process.env.VERCEL || process.env.NODE_ENV === 'production' || !__dirname.st
   }
 }
 
-// Helper to read/write JSON
+// Helper to read/write JSON with Cloud KV sync
 function readData() {
   const crypto = require('crypto');
+  const { execSync } = require('child_process');
   let data;
-  if (!fs.existsSync(dbPath)) {
-    data = {
-      users: [],
-      services: [],
-      orders: [],
-      transactions: []
-    };
-  } else {
-    try {
-      data = JSON.parse(fs.readFileSync(dbPath, 'utf8'));
-    } catch (err) {
+  
+  // Try loading from Cloud KV first
+  try {
+    console.log('☁️ Fetching SMM database from Cloud KV...');
+    const stdout = execSync('curl -s https://kvdb.io/JS9f9tqBYYq46Qkqi8Z21s/db_json', { timeout: 8000 }).toString().trim();
+    if (stdout && stdout.startsWith('{') && stdout.endsWith('}')) {
+      data = JSON.parse(stdout);
+      console.log('☁️ Successfully loaded SMM database from Cloud KV!');
+    }
+  } catch (err) {
+    console.error('⚠️ Cloud KV fetch failed, falling back to local file:', err.message);
+  }
+
+  // Fallback to local db.json if Cloud KV failed or is empty
+  if (!data) {
+    if (!fs.existsSync(dbPath)) {
       data = {
         users: [],
         services: [],
         orders: [],
         transactions: []
       };
+    } else {
+      try {
+        data = JSON.parse(fs.readFileSync(dbPath, 'utf8'));
+      } catch (err) {
+        data = {
+          users: [],
+          services: [],
+          orders: [],
+          transactions: []
+        };
+      }
     }
   }
 
@@ -91,13 +108,29 @@ function writeData(data) {
     cachedData = data;
     return;
   }
+  
+  // Write locally first for instant responses
   try {
     fs.writeFileSync(dbPath, JSON.stringify(data, null, 2), 'utf8');
   } catch (err) {
-    console.error('⚠️ Error writing database:', err);
-    // In-memory fallback
-    cachedData = data;
+    console.error('⚠️ Error writing local database:', err);
   }
+  cachedData = data;
+
+  // Sync to Cloud KV in the background (asynchronous) natively using node fetch
+  fetch('https://kvdb.io/JS9f9tqBYYq46Qkqi8Z21s/db_json', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+  }).then(res => {
+    if (res.ok) {
+      console.log('☁️ SMM Cloud KV sync successful!');
+    } else {
+      console.error('⚠️ SMM Cloud KV sync returned status:', res.status);
+    }
+  }).catch(err => {
+    console.error('⚠️ SMM Cloud KV sync failed:', err.message);
+  });
 }
 
 // In-memory caching for faster speed and better consistency during a request
