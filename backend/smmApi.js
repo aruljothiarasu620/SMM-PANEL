@@ -1,13 +1,13 @@
 // =============================================
 // SMM PROVIDER API — Universal Integration
-// Works with: JustAnotherPanel, PerfectPanel,
+// Works with: EasySmmPanel, JustAnotherPanel, PerfectPanel,
 //             SMMKings, SMMFollows, etc.
 //             (All use same API standard)
 // =============================================
 
 const SMM_CONFIG = {
-  url: process.env.SMM_API_URL || 'https://justanotherpanel.com/api/v2',
-  key: process.env.SMM_API_KEY || 'YOUR_JAP_API_KEY_HERE',
+  url: process.env.SMM_API_URL || 'https://easysmmpanel.com/api/v2',
+  key: process.env.SMM_API_KEY || 'YOUR_EASY_SMM_API_KEY_HERE',
 };
 
 // Generic API caller
