@@ -665,9 +665,13 @@ async function doLogin() {
 
 async function doRegister() {
   const name = document.getElementById('regName').value;
-  const email = document.getElementById('regEmail').value;
+  const email = document.getElementById('regEmail').value.trim();
   const password = document.getElementById('regPassword').value;
   if (!name || !email || !password) return showAlert('loginAlert', 'Fill all fields', 'error');
+
+  if (!email.toLowerCase().endsWith('@gmail.com')) {
+    return showAlert('loginAlert', 'Only original Gmail addresses (@gmail.com) are allowed', 'error');
+  }
 
   const data = await fetch(API + '/register', {
     method: 'POST',

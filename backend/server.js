@@ -55,13 +55,18 @@ app.post('/api/register', async (req, res) => {
   if (!name || !email || !password)
     return res.json({ success: false, message: 'All fields required' });
 
-  const exists = db.prepare('SELECT id FROM users WHERE email = ?').get(email);
+  const cleanEmail = email.trim().toLowerCase();
+  if (!cleanEmail.endsWith('@gmail.com')) {
+    return res.json({ success: false, message: 'Only original Gmail addresses (@gmail.com) are allowed to register' });
+  }
+
+  const exists = db.prepare('SELECT id FROM users WHERE email = ?').get(cleanEmail);
   if (exists)
     return res.json({ success: false, message: 'Email already registered' });
 
   const hash = crypto.createHash('sha256').update(password).digest('hex');
   db.prepare('INSERT INTO users (name, email, password, balance) VALUES (?, ?, ?, 0)')
-    .run(name, email, hash);
+    .run(name, cleanEmail, hash);
 
   res.json({ success: true, message: 'Registered successfully' });
 });
@@ -116,8 +121,13 @@ app.post('/api/auth/google', async (req, res) => {
       return res.json({ success: false, message: 'Google token does not contain email' });
     }
 
+    const cleanEmail = email.trim().toLowerCase();
+    if (!cleanEmail.endsWith('@gmail.com')) {
+      return res.json({ success: false, message: 'Only original Gmail addresses (@gmail.com) are allowed' });
+    }
+
     // Check if user exists in database
-    let user = db.prepare('SELECT * FROM users WHERE email = ?').get(email);
+    let user = db.prepare('SELECT * FROM users WHERE email = ?').get(cleanEmail);
     
     if (!user) {
       // Auto-register user (random pass since they login with Google)
@@ -125,10 +135,10 @@ app.post('/api/auth/google', async (req, res) => {
       const hash = crypto.createHash('sha256').update(randomPassword).digest('hex');
       
       db.prepare('INSERT INTO users (name, email, password, balance) VALUES (?, ?, ?, 0)')
-        .run(name || email.split('@')[0], email, hash);
+        .run(name || cleanEmail.split('@')[0], cleanEmail, hash);
         
-      user = db.prepare('SELECT * FROM users WHERE email = ?').get(email);
-      console.log(`👤 Automatically registered new Google user: ${email} (Role: ${user.role})`);
+      user = db.prepare('SELECT * FROM users WHERE email = ?').get(cleanEmail);
+      console.log(`👤 Automatically registered new Google user: ${cleanEmail} (Role: ${user.role})`);
     }
 
     // Generate login token
