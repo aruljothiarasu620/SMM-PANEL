@@ -426,6 +426,52 @@ app.get('/api/admin/provider-balance', requireAdmin, async (req, res) => {
   res.json(result);
 });
 
+// Test Vercel KV connection and API format
+app.get('/api/admin/test-kv', requireAdmin, async (req, res) => {
+  const url = process.env.KV_REST_API_URL;
+  const token = process.env.KV_REST_API_TOKEN;
+  if (!url || !token) {
+    return res.json({ success: false, message: 'Vercel KV env variables not found' });
+  }
+  
+  try {
+    // Test 1: Get db_json
+    const getRes = await fetch(`${url}/get/db_json`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    const getBody = await getRes.json();
+    
+    // Test 2: Try writing a test key using standard REST path
+    const setRes = await fetch(`${url}/set/test_key/123`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    const setBody = await setRes.json();
+    
+    // Test 3: Try writing using command array POST (standard Upstash)
+    const cmdRes = await fetch(url, {
+      method: 'POST',
+      headers: { 
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(['SET', 'test_key_cmd', '456'])
+    });
+    const cmdBody = await cmdRes.json();
+    
+    res.json({
+      success: true,
+      url,
+      token: token.substring(0, 10) + '...',
+      getBody,
+      setBody,
+      cmdBody
+    });
+  } catch (err) {
+    res.json({ success: false, error: err.message });
+  }
+});
+
 // Import services from provider into DB
 app.post('/api/admin/import-services', requireAdmin, async (req, res) => {
   const result = await smm.getProviderServices();
