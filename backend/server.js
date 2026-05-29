@@ -474,13 +474,11 @@ app.post('/api/admin/import-services', requireAdmin, async (req, res) => {
       // 2. Check if duplicate platform + name exists (case-insensitive)
       const existsByName = db.prepare('SELECT id, rate FROM services WHERE platform = ? AND LOWER(name) = ?').get(platform, s.name.trim().toLowerCase());
       if (existsByName) {
-        // Auto-update if the new rate is cheaper
+        // Always update rate to current markup (100%) + update provider_service_id
         const newRate = parseFloat((s.rate * 2.0).toFixed(4));
-        if (newRate < existsByName.rate) {
-          db.prepare('UPDATE services SET rate = ?, provider_service_id = ? WHERE id = ?')
-            .run(newRate, String(s.service), existsByName.id);
-        }
-        continue; // Skip duplicate service insertion
+        db.prepare('UPDATE services SET rate = ?, provider_service_id = ?, min_qty = ?, max_qty = ? WHERE id = ?')
+          .run(newRate, String(s.service), s.min, s.max, existsByName.id);
+        continue; // Skip re-inserting, just updated
       }
 
       // 3. Insert unique service
