@@ -631,6 +631,10 @@ class Statement {
     if (this.sql.includes('SELECT * FROM services WHERE active = 1')) {
       return data.services.filter(s => s.active === 1);
     }
+    // 1b. SELECT * FROM services (get all services)
+    if (this.sql.includes('SELECT * FROM services') && !this.sql.includes('WHERE')) {
+      return data.services;
+    }
     // 2. SELECT * FROM services WHERE platform = ? AND active = 1
     if (this.sql.includes('SELECT * FROM services WHERE platform = ? AND active = 1')) {
       const platform = params[0];

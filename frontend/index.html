@@ -440,13 +440,36 @@ tr:hover td { background:rgba(255,255,255,0.02); }
 
         <!-- SUB-PANEL: SERVICES -->
         <div id="adminSub-adminServices" class="admin-subpage">
-          <div style="background: var(--card); border: 0.5px solid var(--border); border-radius: 12px; padding: 24px; max-width: 600px;">
+          <div style="background: var(--card); border: 0.5px solid var(--border); border-radius: 12px; padding: 24px; max-width: 600px; margin-bottom: 24px;">
             <h3 style="margin-bottom: 8px;">Import Services from Provider</h3>
             <p style="font-size: 13px; color: var(--muted); margin-bottom: 18px;">
               This will import all wholesale services from the connected SMM API provider. 
               It automatically maps them and adds a <strong>100% markup</strong> profit margin to the rate charged to users.
             </p>
             <button class="nav-btn" id="importServicesBtn" onclick="importServicesFromProvider()">🔌 Import Services Now</button>
+          </div>
+
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; flex-wrap: wrap; gap: 10px;">
+            <h3 style="font-size: 16px;">SMM Service Catalog (Wholesale vs Selling Price)</h3>
+            <input class="form-input" id="adminServiceSearch" type="text" placeholder="🔍 Search Services (Name/Platform)..." style="max-width: 280px; padding: 6px 12px; font-size: 13px; margin: 0;" oninput="filterAdminServices()" />
+          </div>
+          
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>#Provider ID</th>
+                  <th>Platform</th>
+                  <th>Service Name</th>
+                  <th style="text-align: right;">Wholesale Cost (Original)</th>
+                  <th style="text-align: right;">Selling Price (100% Markup)</th>
+                  <th style="text-align: right;">Net Profit</th>
+                </tr>
+              </thead>
+              <tbody id="adminServicesTable">
+                <tr><td colspan="6" style="text-align:center;color:var(--muted);padding:32px">Loading catalog...</td></tr>
+              </tbody>
+            </table>
           </div>
         </div>
       </div>
@@ -625,7 +648,7 @@ function renderServices(platform) {
   const sel = document.getElementById('serviceSelect');
   sel.innerHTML = '<option value="">Select a service</option>';
   servicesCache[platform].forEach(s => {
-    sel.innerHTML += `<option value="${s.id}" data-rate="${s.rate}" data-min="${s.min_qty}" data-max="${s.max_qty}" data-delivery="${s.delivery_time}">${s.name} — ₹${s.rate}/1000</option>`;
+    sel.innerHTML += `<option value="${s.id}" data-rate="${s.rate}" data-original="${(s.rate / 2.0).toFixed(4)}" data-min="${s.min_qty}" data-max="${s.max_qty}" data-delivery="${s.delivery_time}">${s.name} — ₹${s.rate}/1000</option>`;
   });
   updateServiceInfo();
 }
@@ -635,8 +658,13 @@ function updateServiceInfo() {
   const info = document.getElementById('serviceInfo');
   if (!opt || !opt.dataset.rate) { info.style.display = 'none'; return; }
   info.style.display = 'block';
-  document.getElementById('svcInfoText').textContent =
-    `Min: ${Number(opt.dataset.min).toLocaleString()} | Max: ${Number(opt.dataset.max).toLocaleString()} | Delivery: ${opt.dataset.delivery}`;
+  
+  let infoText = `Min: ${Number(opt.dataset.min).toLocaleString()} | Max: ${Number(opt.dataset.max).toLocaleString()} | Delivery: ${opt.dataset.delivery}`;
+  if (currentUser && currentUser.role === 'admin' && opt.dataset.original) {
+    infoText += ` | <span style="color:var(--accent); font-weight:bold;">🔑 Admin Cost: ₹${opt.dataset.original}/1000</span>`;
+  }
+  
+  document.getElementById('svcInfoText').innerHTML = infoText;
   document.getElementById('orderQty').min = opt.dataset.min;
   document.getElementById('orderQty').value = opt.dataset.min;
   calcCharge();
@@ -649,6 +677,31 @@ function calcCharge() {
   const total = (rate * qty / 1000).toFixed(2);
   document.getElementById('orderTotal').textContent = total;
   document.getElementById('qtyInfo').textContent = qty.toLocaleString() + ' units';
+
+  // Show admin profit/cost calculator!
+  let profitDiv = document.getElementById('adminOrderProfitCalc');
+  if (currentUser && currentUser.role === 'admin' && opt?.dataset?.original) {
+    if (!profitDiv) {
+      const totalContainer = document.getElementById('orderTotal').parentNode;
+      profitDiv = document.createElement('div');
+      profitDiv.id = 'adminOrderProfitCalc';
+      profitDiv.style.fontSize = '12px';
+      profitDiv.style.color = 'var(--muted)';
+      profitDiv.style.marginTop = '8px';
+      profitDiv.style.padding = '8px 12px';
+      profitDiv.style.background = 'rgba(108,99,255,0.08)';
+      profitDiv.style.border = '0.5px dashed var(--accent)';
+      profitDiv.style.borderRadius = '8px';
+      totalContainer.appendChild(profitDiv);
+    }
+    const origRate = parseFloat(opt.dataset.original);
+    const origTotal = (origRate * qty / 1000).toFixed(2);
+    const netProfit = (total - origTotal).toFixed(2);
+    profitDiv.innerHTML = `🔑 <strong style="color:var(--muted)">Admin Cost:</strong> ₹${origTotal} &nbsp;|&nbsp; 📈 <strong style="color:var(--green)">Net Profit:</strong> ₹${netProfit}`;
+    profitDiv.style.display = 'block';
+  } else if (profitDiv) {
+    profitDiv.style.display = 'none';
+  }
 }
 
 async function placeOrder() {
@@ -795,9 +848,6 @@ function hideAlert(id) {
 // =============================================
 // GOOGLE AUTHENTICATION HANDLER
 // =============================================
-
-
-// =============================================
 // ADMIN PANEL CONTROL HANDLERS
 // =============================================
 function switchAdminTab(id) {
@@ -817,6 +867,7 @@ function switchAdminTab(id) {
   if (id === 'adminUsers') loadAdminUsers();
   if (id === 'adminOrders') loadAdminOrders();
   if (id === 'adminStats') checkProviderBalance();
+  if (id === 'adminServices') loadAdminServices();
 }
 
 async function loadAdminStats(users, orders) {
@@ -962,6 +1013,7 @@ async function importServicesFromProvider() {
     const res = await api('/admin/import-services', 'POST');
     if (res.success) {
       showAlert('adminAlert', res.message, 'success');
+      loadAdminServices(); // Refresh catalog table
     } else {
       showAlert('adminAlert', res.message, 'error');
     }
@@ -969,6 +1021,54 @@ async function importServicesFromProvider() {
     showAlert('adminAlert', 'Failed to communicate with provider API', 'error');
   }
   btn.disabled = false; btn.textContent = '🔌 Import Services Now';
+}
+
+let adminServicesCache = [];
+
+async function loadAdminServices() {
+  const tbody = document.getElementById('adminServicesTable');
+  tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:32px">Loading catalog...</td></tr>';
+  const data = await api('/admin/services');
+  if (!data.success) {
+    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--red);padding:32px">Error: ${data.message}</td></tr>`;
+    return;
+  }
+  adminServicesCache = data.services;
+  renderAdminServices(adminServicesCache);
+}
+
+function renderAdminServices(services) {
+  const tbody = document.getElementById('adminServicesTable');
+  if (!services || !services.length) {
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:24px">No services found in system</td></tr>';
+    return;
+  }
+  tbody.innerHTML = services.map(s => {
+    const wholesalePrice = parseFloat((s.rate / 2.0).toFixed(4));
+    const sellingPrice = parseFloat(s.rate).toFixed(2);
+    const profit = parseFloat((s.rate - wholesalePrice).toFixed(2));
+    
+    return `
+      <tr>
+        <td style="color: var(--muted); font-family: monospace;">#${s.provider_service_id || s.id}</td>
+        <td><span class="status-badge s-processing" style="font-size: 10px; text-transform: uppercase; background: rgba(108,99,255,0.15); color: var(--accent);">${s.platform}</span></td>
+        <td><strong>${s.name}</strong></td>
+        <td style="text-align: right; color: var(--muted); font-weight: 500;">₹${wholesalePrice.toFixed(4)}</td>
+        <td style="text-align: right; color: var(--green); font-weight: 600;">₹${sellingPrice}</td>
+        <td style="text-align: right; color: var(--accent); font-weight: 600;">₹${profit}</td>
+      </tr>
+    `;
+  }).join('');
+}
+
+function filterAdminServices() {
+  const q = document.getElementById('adminServiceSearch').value.toLowerCase();
+  const filtered = adminServicesCache.filter(s => 
+    s.name.toLowerCase().includes(q) || 
+    s.platform.toLowerCase().includes(q) ||
+    (s.provider_service_id && s.provider_service_id.toString().includes(q))
+  );
+  renderAdminServices(filtered);
 }
 
 let activeUserId = null;

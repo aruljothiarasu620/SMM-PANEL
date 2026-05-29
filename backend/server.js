@@ -387,6 +387,16 @@ app.get('/api/admin/users', requireAdmin, (req, res) => {
   }
 });
 
+// List all services for admin with original price calculations
+app.get('/api/admin/services', requireAdmin, (req, res) => {
+  try {
+    const services = db.prepare('SELECT * FROM services').all();
+    res.json({ success: true, services });
+  } catch (err) {
+    res.json({ success: false, message: err.message });
+  }
+});
+
 // Set exact balance for a user (admin only) - used to reset fake seed balances
 app.post('/api/admin/users/:id/set-balance', requireAdmin, async (req, res) => {
   const { balance } = req.body;
