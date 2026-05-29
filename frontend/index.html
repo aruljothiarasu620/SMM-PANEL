@@ -443,8 +443,9 @@ tr:hover td { background:rgba(255,255,255,0.02); }
           <div style="background: var(--card); border: 0.5px solid var(--border); border-radius: 12px; padding: 24px; max-width: 600px; margin-bottom: 24px;">
             <h3 style="margin-bottom: 8px;">Import Services from Provider</h3>
             <p style="font-size: 13px; color: var(--muted); margin-bottom: 18px;">
-              This will import all wholesale services from the connected SMM API provider. 
-              It automatically maps them and adds a <strong>100% markup</strong> profit margin to the rate charged to users.
+              This will import all wholesale services from the connected SMM API provider. It automatically applies smart pricing rules:<br>
+              💡 <strong>Wholesale Cost &lt; ₹1.00:</strong> <strong>500% markup</strong> profit margin (minimum floor price ₹1.00)<br>
+              💡 <strong>Wholesale Cost &ge; ₹1.00:</strong> <strong>100% markup</strong> profit margin
             </p>
             <button class="nav-btn" id="importServicesBtn" onclick="importServicesFromProvider()">🔌 Import Services Now</button>
           </div>
@@ -648,8 +649,8 @@ function renderServices(platform) {
   const sel = document.getElementById('serviceSelect');
   sel.innerHTML = '<option value="">Select a service</option>';
   servicesCache[platform].forEach(s => {
-    const originalRate = s.original_rate !== undefined ? parseFloat(s.original_rate).toFixed(4) : parseFloat((s.rate / 2.0).toFixed(4));
-    sel.innerHTML += `<option value="${s.id}" data-rate="${s.rate}" data-original="${originalRate}" data-min="${s.min_qty}" data-max="${s.max_qty}" data-delivery="${s.delivery_time}">${s.name} — ₹${s.rate}/1000</option>`;
+    const origRate = s.original_rate !== undefined ? s.original_rate : parseFloat((s.rate / 2.0).toFixed(4));
+    sel.innerHTML += `<option value="${s.id}" data-rate="${s.rate}" data-original="${origRate}" data-min="${s.min_qty}" data-max="${s.max_qty}" data-delivery="${s.delivery_time}">${s.name} — ₹${s.rate}/1000</option>`;
   });
   updateServiceInfo();
 }

@@ -491,17 +491,25 @@ app.post('/api/admin/import-services', requireAdmin, async (req, res) => {
     let updated = 0;
     for (const s of services) {
       const platform = guessPlatform(s.category);
-      const wholesaleRate = parseFloat(s.rate);
-      
-      // Below 1 Rs wholesale gets 500% markup (6.0x multiplier), 1 Rs and above gets 100% markup (2.0x multiplier)
-      const markupMultiplier = wholesaleRate < 1.0 ? 6.0 : 2.0;
-      const newRate = parseFloat((wholesaleRate * markupMultiplier).toFixed(4));
 
-      // 1. If provider_service_id already exists → update rate to markup
+      // Smart Pricing Rules:
+      // - If wholesale cost is less than ₹1.00: 500% markup (multiply by 6) and enforce a minimum floor of ₹1.00
+      // - Otherwise: 100% markup (multiply by 2)
+      let newRate;
+      if (s.rate < 1.0) {
+        newRate = parseFloat((s.rate * 6.0).toFixed(4));
+        if (newRate < 1.0) {
+          newRate = 1.00;
+        }
+      } else {
+        newRate = parseFloat((s.rate * 2.0).toFixed(4));
+      }
+
+      // 1. If provider_service_id already exists → update rate + original_rate
       const exists = db.prepare('SELECT id FROM services WHERE provider_service_id = ?').get(String(s.service));
       if (exists) {
-        db.prepare('UPDATE services SET rate = ?, original_rate = ?, min_qty = ?, max_qty = ? WHERE id = ?')
-          .run(newRate, wholesaleRate, s.min, s.max, exists.id);
+        db.prepare('UPDATE services SET rate = ?, min_qty = ?, max_qty = ?, original_rate = ? WHERE id = ?')
+          .run(newRate, s.min, s.max, parseFloat(s.rate), exists.id);
         updated++;
         continue;
       }
@@ -509,27 +517,27 @@ app.post('/api/admin/import-services', requireAdmin, async (req, res) => {
       // 2. Check if duplicate platform + name exists (case-insensitive)
       const existsByName = db.prepare('SELECT id FROM services WHERE platform = ? AND LOWER(name) = ?').get(platform, s.name.trim().toLowerCase());
       if (existsByName) {
-        // Update rate + link provider_service_id
-        db.prepare('UPDATE services SET rate = ?, original_rate = ?, provider_service_id = ?, min_qty = ?, max_qty = ? WHERE id = ?')
-          .run(newRate, wholesaleRate, String(s.service), s.min, s.max, existsByName.id);
+        // Update rate + link provider_service_id + original_rate
+        db.prepare('UPDATE services SET rate = ?, provider_service_id = ?, min_qty = ?, max_qty = ?, original_rate = ? WHERE id = ?')
+          .run(newRate, String(s.service), s.min, s.max, parseFloat(s.rate), existsByName.id);
         updated++;
         continue;
       }
 
-      // 3. Insert brand new service
+      // 3. Insert brand new service with original_rate
       db.prepare(`
-        INSERT INTO services (platform, name, description, rate, original_rate, min_qty, max_qty, delivery_time, provider_service_id, active)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
+        INSERT INTO services (platform, name, description, rate, min_qty, max_qty, delivery_time, provider_service_id, active, original_rate)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?)
       `).run(
         platform,
         s.name,
         s.category,
         newRate,
-        wholesaleRate,
         s.min,
         s.max,
         s.average_time || 'Varies',
-        String(s.service)
+        String(s.service),
+        parseFloat(s.rate)
       );
       imported++;
     }

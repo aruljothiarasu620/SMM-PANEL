@@ -572,29 +572,9 @@ class Statement {
         changes = 1;
       }
     }
-    // 16. INSERT INTO services with 10 columns (importing services with original_rate)
-    else if (this.sql.includes('INSERT INTO services (platform, name, description, rate, original_rate, min_qty, max_qty, delivery_time, provider_service_id, active)')) {
-      const [platform, name, description, rate, original_rate, min_qty, max_qty, delivery_time, provider_service_id, active] = params;
-      const id = data.services.length > 0 ? Math.max(...data.services.map(s => s.id)) + 1 : 1;
-      data.services.push({
-        id,
-        platform,
-        name,
-        description,
-        rate,
-        original_rate,
-        min_qty,
-        max_qty,
-        delivery_time,
-        provider_service_id,
-        active: active !== undefined ? active : 1
-      });
-      lastInsertRowid = id;
-      changes = 1;
-    }
-    // 16b. Legacy INSERT INTO services with 9 columns
+    // 16. INSERT INTO services with 9 columns (importing services)
     else if (this.sql.includes('INSERT INTO services (platform, name, description, rate, min_qty, max_qty, delivery_time, provider_service_id, active)')) {
-      const [platform, name, description, rate, min_qty, max_qty, delivery_time, provider_service_id, active] = params;
+      const [platform, name, description, rate, min_qty, max_qty, delivery_time, provider_service_id, active, original_rate] = params;
       const id = data.services.length > 0 ? Math.max(...data.services.map(s => s.id)) + 1 : 1;
       data.services.push({
         id,
@@ -602,12 +582,12 @@ class Statement {
         name,
         description,
         rate,
-        original_rate: parseFloat((rate / 2.0).toFixed(4)),
         min_qty,
         max_qty,
         delivery_time,
         provider_service_id,
-        active: active !== undefined ? active : 1
+        active: active !== undefined ? active : 1,
+        original_rate: original_rate !== undefined ? original_rate : parseFloat((rate / 2.0).toFixed(4))
       });
       lastInsertRowid = id;
       changes = 1;
@@ -622,48 +602,48 @@ class Statement {
         name,
         description,
         rate,
-        original_rate: parseFloat((rate / 2.0).toFixed(4)),
         min_qty,
         max_qty,
         delivery_time,
         provider_service_id: null,
-        active: 1
+        active: 1,
+        original_rate: parseFloat((rate / 2.0).toFixed(4))
       });
       lastInsertRowid = id;
       changes = 1;
     }
-    // 17a. UPDATE services SET rate = ?, original_rate = ?, min_qty = ?, max_qty = ? WHERE id = ?
-    else if (this.sql.includes('UPDATE services SET rate = ?, original_rate = ?, min_qty = ?, max_qty = ? WHERE id = ?')) {
-      const [rate, original_rate, min_qty, max_qty, id] = params;
-      const svc = data.services.find(s => s.id === Number(id));
-      if (svc) {
-        svc.rate = rate;
-        svc.original_rate = original_rate;
-        svc.min_qty = min_qty;
-        svc.max_qty = max_qty;
-        changes = 1;
-      }
-    }
-    // 17b. UPDATE services SET rate = ?, original_rate = ?, provider_service_id = ?, min_qty = ?, max_qty = ? WHERE id = ?
-    else if (this.sql.includes('UPDATE services SET rate = ?, original_rate = ?, provider_service_id = ?, min_qty = ?, max_qty = ? WHERE id = ?')) {
-      const [rate, original_rate, provider_service_id, min_qty, max_qty, id] = params;
-      const svc = data.services.find(s => s.id === Number(id));
-      if (svc) {
-        svc.rate = rate;
-        svc.original_rate = original_rate;
-        svc.provider_service_id = provider_service_id;
-        svc.min_qty = min_qty;
-        svc.max_qty = max_qty;
-        changes = 1;
-      }
-    }
-    // 17c. Legacy UPDATE services SET rate = ?, provider_service_id = ? WHERE id = ?
+    // 17. UPDATE services SET rate = ?, provider_service_id = ? WHERE id = ?
     else if (this.sql.includes('UPDATE services SET rate = ?, provider_service_id = ? WHERE id = ?')) {
       const [rate, provider_service_id, id] = params;
       const svc = data.services.find(s => s.id === Number(id));
       if (svc) {
         svc.rate = rate;
         svc.provider_service_id = provider_service_id;
+        changes = 1;
+      }
+    }
+    // 17b. UPDATE services SET rate = ?, min_qty = ?, max_qty = ? WHERE id = ?
+    else if (this.sql.includes('UPDATE services SET rate = ?, min_qty = ?, max_qty = ? WHERE id = ?') || this.sql.includes('UPDATE services SET rate = ?, min_qty = ?, max_qty = ?, original_rate = ? WHERE id = ?')) {
+      const [rate, min_qty, max_qty, original_rate, id] = params.length === 5 ? params : [params[0], params[1], params[2], null, params[3]];
+      const svc = data.services.find(s => s.id === Number(id));
+      if (svc) {
+        svc.rate = rate;
+        svc.min_qty = min_qty;
+        svc.max_qty = max_qty;
+        if (original_rate !== null) svc.original_rate = original_rate;
+        changes = 1;
+      }
+    }
+    // 17c. UPDATE services SET rate = ?, provider_service_id = ?, min_qty = ?, max_qty = ? WHERE id = ?
+    else if (this.sql.includes('UPDATE services SET rate = ?, provider_service_id = ?, min_qty = ?, max_qty = ? WHERE id = ?') || this.sql.includes('UPDATE services SET rate = ?, provider_service_id = ?, min_qty = ?, max_qty = ?, original_rate = ? WHERE id = ?')) {
+      const [rate, provider_service_id, min_qty, max_qty, original_rate, id] = params.length === 6 ? params : [params[0], params[1], params[2], params[3], null, params[4]];
+      const svc = data.services.find(s => s.id === Number(id));
+      if (svc) {
+        svc.rate = rate;
+        svc.provider_service_id = provider_service_id;
+        svc.min_qty = min_qty;
+        svc.max_qty = max_qty;
+        if (original_rate !== null) svc.original_rate = original_rate;
         changes = 1;
       }
     }
