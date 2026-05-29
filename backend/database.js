@@ -38,7 +38,10 @@ function readData() {
       console.log('☁️ Fetching SMM database from Vercel KV...');
       const url = `${process.env.KV_REST_API_URL}/get/db_json`;
       const token = process.env.KV_REST_API_TOKEN;
-      const stdout = execSync(`curl -s -H "Authorization: Bearer ${token}" "${url}"`, { timeout: 8000 }).toString().trim();
+      const stdout = execSync(`curl -s -H "Authorization: Bearer ${token}" "${url}"`, { 
+        timeout: 8000,
+        maxBuffer: 10 * 1024 * 1024
+      }).toString().trim();
       
       if (stdout && stdout.startsWith('{')) {
         const wrapper = JSON.parse(stdout);
@@ -59,7 +62,10 @@ function readData() {
   if (!data) {
     try {
       console.log('☁️ Fetching SMM database from Cloud KV...');
-      const stdout = execSync('curl -s https://kvdb.io/JS9f9tqBYYq46Qkqi8Z21s/db_json', { timeout: 8000 }).toString().trim();
+      const stdout = execSync('curl -s https://kvdb.io/JS9f9tqBYYq46Qkqi8Z21s/db_json', { 
+        timeout: 8000,
+        maxBuffer: 10 * 1024 * 1024
+      }).toString().trim();
       if (stdout && stdout.startsWith('{') && stdout.endsWith('}')) {
         data = JSON.parse(stdout);
         console.log('☁️ Successfully loaded SMM database from Cloud KV!');
