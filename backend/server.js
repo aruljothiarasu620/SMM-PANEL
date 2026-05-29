@@ -398,6 +398,21 @@ function requireAdmin(req, res, next) {
   });
 }
 
+// Debug live database state
+app.get('/api/admin/debug-db', requireAdmin, (req, res) => {
+  const services = db.prepare('SELECT * FROM services WHERE active = 1').all();
+  const counts = {};
+  for (const s of services) {
+    counts[s.platform] = (counts[s.platform] || 0) + 1;
+  }
+  res.json({
+    success: true,
+    totalServices: services.length,
+    counts,
+    sampleInsta: services.filter(s => s.platform === 'instagram').slice(0, 3)
+  });
+});
+
 // =============================================
 // SMM PROVIDER ADMIN ROUTES
 // =============================================
