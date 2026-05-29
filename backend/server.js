@@ -8,7 +8,8 @@ const { OAuth2Client } = require('google-auth-library');
 const db = require('./database');
 const smm = require('./smmApi');
 
-const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+const rawClientId = (process.env.GOOGLE_CLIENT_ID || '').trim();
+const googleClient = new OAuth2Client(rawClientId);
 
 const app = express();
 app.use(cors());
@@ -95,7 +96,7 @@ app.post('/api/auth/google', async (req, res) => {
     let payload;
     
     // Check if client ID is configured
-    const clientId = process.env.GOOGLE_CLIENT_ID;
+    const clientId = (process.env.GOOGLE_CLIENT_ID || '').trim();
     if (clientId && clientId !== 'YOUR_GOOGLE_CLIENT_ID_HERE') {
       const ticket = await googleClient.verifyIdToken({
         idToken: credential,
@@ -159,7 +160,7 @@ app.get('/api/profile', requireAuth, (req, res) => {
 
 // Get client-side config parameters
 app.get('/api/config', (req, res) => {
-  res.json({ google_client_id: process.env.GOOGLE_CLIENT_ID || '' });
+  res.json({ google_client_id: (process.env.GOOGLE_CLIENT_ID || '').trim() });
 });
 
 // =============================================
