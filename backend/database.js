@@ -176,7 +176,7 @@ function readData() {
       name: 'Arul Admin',
       email: adminEmail,
       password: adminHash,
-      balance: 100000, // Pre-fund admin
+      balance: 0, // Admin starts with real ₹0 balance
       token: null,
       role: 'admin',
       created_at: new Date().toISOString()
@@ -192,6 +192,26 @@ function readData() {
       try {
         fs.writeFileSync(dbPath, JSON.stringify(data, null, 2), 'utf8');
       } catch (e) {}
+    }
+  }
+
+  // ── Migration: reset fake seed balance of 100000 → 0 ──
+  if (adminUser.balance === 100000) {
+    console.log('🔧 Migration: resetting fake admin seed balance from ₹100000 → ₹0');
+    adminUser.balance = 0;
+    // Save locally
+    try { fs.writeFileSync(dbPath, JSON.stringify(data, null, 2), 'utf8'); } catch (e) {}
+    // Push directly to Vercel KV so all instances see it immediately
+    if (process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN) {
+      fetch(`${process.env.KV_REST_API_URL}/set/db_json`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${process.env.KV_REST_API_TOKEN}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(JSON.stringify(data))
+      }).then(() => console.log('☁️ Migration synced to Vercel KV — admin balance is now ₹0'))
+        .catch(e => console.error('⚠️ KV sync failed:', e.message));
     }
   }
 
