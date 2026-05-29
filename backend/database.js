@@ -193,6 +193,7 @@ function readData() {
 }
 
 let disableWrite = false;
+let pendingSyncPromise = null;
 
 function writeData(data) {
   if (disableWrite) {
@@ -212,7 +213,7 @@ function writeData(data) {
   if (process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN) {
     const url = `${process.env.KV_REST_API_URL}/set/db_json`;
     const token = process.env.KV_REST_API_TOKEN;
-    fetch(url, {
+    pendingSyncPromise = fetch(url, {
       method: 'POST',
       headers: { 
         'Authorization': `Bearer ${token}`,
@@ -225,12 +226,14 @@ function writeData(data) {
       } else {
         console.error('⚠️ Vercel KV sync returned status:', res.status);
       }
+      pendingSyncPromise = null;
     }).catch(err => {
       console.error('⚠️ Vercel KV sync failed:', err.message);
+      pendingSyncPromise = null;
     });
   } else {
     // Fallback to Cloud KV in the background (asynchronous) natively using node fetch
-    fetch('https://kvdb.io/JS9f9tqBYYq46Qkqi8Z21s/db_json', {
+    pendingSyncPromise = fetch('https://kvdb.io/JS9f9tqBYYq46Qkqi8Z21s/db_json', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
@@ -240,8 +243,10 @@ function writeData(data) {
       } else {
         console.error('⚠️ SMM Cloud KV sync returned status:', res.status);
       }
+      pendingSyncPromise = null;
     }).catch(err => {
       console.error('⚠️ SMM Cloud KV sync failed:', err.message);
+      pendingSyncPromise = null;
     });
   }
 }
@@ -647,6 +652,12 @@ const db = {
   pragma: (stmt) => {},
   exec: (stmt) => {},
   prepare: (sql) => new Statement(sql),
+  syncCloud: async () => {
+    if (pendingSyncPromise) {
+      console.log('⏳ Awaiting pending Vercel KV cloud sync...');
+      await pendingSyncPromise;
+    }
+  },
   transaction: (fn) => {
     return (...args) => {
       // Begin transaction: cache current state

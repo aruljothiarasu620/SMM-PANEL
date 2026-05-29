@@ -217,6 +217,7 @@ app.post('/api/orders', requireAuth, async (req, res) => {
     console.log(`⚠️ Service ${service_id} has no provider_service_id mapped`);
   }
 
+  await db.syncCloud(); // Ensure cloud sync completes in serverless
   res.json({
     success: true,
     message: 'Order placed successfully!',
@@ -278,7 +279,7 @@ app.post('/api/payment/create', requireAuth, async (req, res) => {
 });
 
 // Step 2: Verify payment after success
-app.post('/api/payment/verify', requireAuth, (req, res) => {
+app.post('/api/payment/verify', requireAuth, async (req, res) => {
   const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
 
   const secret = process.env.RAZORPAY_KEY_SECRET || 'YOUR_SECRET_HERE';
@@ -300,6 +301,7 @@ app.post('/api/payment/verify', requireAuth, (req, res) => {
     .run('paid', razorpay_payment_id, txn.id);
 
   const user = db.prepare('SELECT balance FROM users WHERE id = ?').get(req.userId);
+  await db.syncCloud(); // Ensure cloud sync completes in serverless
   res.json({ success: true, message: `₹${txn.amount} added to wallet!`, new_balance: user.balance });
 });
 
@@ -341,7 +343,7 @@ app.get('/api/admin/users', requireAdmin, (req, res) => {
 });
 
 // Adjust any user's balance (credit or debit)
-app.post('/api/admin/users/:id/balance', requireAdmin, (req, res) => {
+app.post('/api/admin/users/:id/balance', requireAdmin, async (req, res) => {
   const { amount, note } = req.body; // positive to credit, negative to debit
   const userId = Number(req.params.id);
 
@@ -364,6 +366,7 @@ app.post('/api/admin/users/:id/balance', requireAdmin, (req, res) => {
     `).run(userId, `ADMIN: ${note || txnType}`, Math.abs(amount), amount >= 0 ? 'paid' : 'debited');
 
     const updatedUser = db.prepare('SELECT balance FROM users WHERE id = ?').get(userId);
+    await db.syncCloud(); // Ensure cloud sync completes in serverless
     res.json({
       success: true,
       message: `Successfully adjusted balance by ₹${amount}. New balance: ₹${updatedUser.balance}`,
@@ -471,6 +474,7 @@ app.post('/api/admin/import-services', requireAdmin, async (req, res) => {
 
   try {
     const importedCount = runImport(result.services);
+    await db.syncCloud(); // Ensure cloud sync completes in serverless
     res.json({ success: true, message: `Imported ${importedCount} new services`, total: result.services.length });
   } catch (err) {
     console.error('Import services transaction failed:', err);
