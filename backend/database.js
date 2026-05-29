@@ -344,7 +344,7 @@ class Statement {
   }
 
   run(...params) {
-    const data = getFreshData(true); // Force fresh read to avoid overwrite
+    const data = disableWrite ? cachedData : getFreshData(true);
     let lastInsertRowid = 0;
     let changes = 0;
 
