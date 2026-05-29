@@ -225,7 +225,7 @@ function writeData(data) {
 
   // Sync to Vercel KV in the background (asynchronous)
   if (process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN) {
-    const url = `${process.env.KV_REST_API_URL}/set/db_json`;
+    const url = process.env.KV_REST_API_URL;
     const token = process.env.KV_REST_API_TOKEN;
     pendingSyncPromise = fetch(url, {
       method: 'POST',
@@ -233,12 +233,21 @@ function writeData(data) {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify(JSON.stringify(data)) // Store double-stringified for safe Redis REST serialization
+      body: JSON.stringify(['SET', 'db_json', JSON.stringify(data)])
     }).then(async res => {
+      const text = await res.text();
       if (res.ok) {
-        logSync('☁️ Vercel KV sync successful!');
+        try {
+          const body = JSON.parse(text);
+          if (body && body.error) {
+            logSync(`⚠️ Vercel KV Redis command error: ${body.error}`);
+          } else {
+            logSync('☁️ Vercel KV sync successful!');
+          }
+        } catch (e) {
+          logSync('☁️ Vercel KV sync successful (non-JSON response)!');
+        }
       } else {
-        const text = await res.text();
         logSync(`⚠️ Vercel KV sync returned status ${res.status}: ${text}`);
       }
       pendingSyncPromise = null;
