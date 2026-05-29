@@ -427,6 +427,11 @@ app.post('/api/admin/reset-services', requireAdmin, async (req, res) => {
   }
 });
 
+// View Vercel KV cloud sync logs (admin only)
+app.get('/api/admin/sync-logs', requireAdmin, (req, res) => {
+  res.json({ success: true, logs: db.getSyncLogs() });
+});
+
 // =============================================
 // SMM PROVIDER ADMIN ROUTES
 // =============================================

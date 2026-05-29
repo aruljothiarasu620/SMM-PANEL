@@ -194,6 +194,14 @@ function readData() {
 
 let disableWrite = false;
 let pendingSyncPromise = null;
+let syncLogs = [];
+
+function logSync(msg) {
+  const line = `[${new Date().toISOString()}] ${msg}`;
+  console.log(line);
+  syncLogs.push(line);
+  if (syncLogs.length > 50) syncLogs.shift();
+}
 
 function writeData(data) {
   if (disableWrite) {
@@ -205,7 +213,7 @@ function writeData(data) {
   try {
     fs.writeFileSync(dbPath, JSON.stringify(data, null, 2), 'utf8');
   } catch (err) {
-    console.error('⚠️ Error writing local database:', err);
+    logSync(`⚠️ Error writing local database: ${err.message}`);
   }
   cachedData = data;
 
@@ -220,15 +228,16 @@ function writeData(data) {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify(JSON.stringify(data)) // Store double-stringified for safe Redis REST serialization
-    }).then(res => {
+    }).then(async res => {
       if (res.ok) {
-        console.log('☁️ Vercel KV sync successful!');
+        logSync('☁️ Vercel KV sync successful!');
       } else {
-        console.error('⚠️ Vercel KV sync returned status:', res.status);
+        const text = await res.text();
+        logSync(`⚠️ Vercel KV sync returned status ${res.status}: ${text}`);
       }
       pendingSyncPromise = null;
     }).catch(err => {
-      console.error('⚠️ Vercel KV sync failed:', err.message);
+      logSync(`⚠️ Vercel KV sync failed: ${err.message}`);
       pendingSyncPromise = null;
     });
   } else {
@@ -237,15 +246,16 @@ function writeData(data) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
-    }).then(res => {
+    }).then(async res => {
       if (res.ok) {
-        console.log('☁️ SMM Cloud KV sync successful!');
+        logSync('☁️ SMM Cloud KV sync successful!');
       } else {
-        console.error('⚠️ SMM Cloud KV sync returned status:', res.status);
+        const text = await res.text();
+        logSync(`⚠️ SMM Cloud KV sync returned status ${res.status}: ${text}`);
       }
       pendingSyncPromise = null;
     }).catch(err => {
-      console.error('⚠️ SMM Cloud KV sync failed:', err.message);
+      logSync(`⚠️ SMM Cloud KV sync failed: ${err.message}`);
       pendingSyncPromise = null;
     });
   }
@@ -663,6 +673,7 @@ const db = {
   pragma: (stmt) => {},
   exec: (stmt) => {},
   prepare: (sql) => new Statement(sql),
+  getSyncLogs: () => syncLogs,
   dangerouslyResetServices: () => {
     const data = getFreshData(true); // Force fresh load
     data.services = [];
