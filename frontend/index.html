@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>BoostGram — SMM Panel</title>
 <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 <style>
 * { margin:0; padding:0; box-sizing:border-box; }
 :root {
@@ -204,6 +205,33 @@ tr:hover td { background:rgba(255,255,255,0.02); }
         <input class="form-input" id="regPassword" type="password" placeholder="Min 6 characters" />
       </div>
       <button class="submit-btn" onclick="doRegister()">Create Account →</button>
+    </div>
+
+    <!-- OR Divider + Google Login -->
+    <div style="display: flex; align-items: center; justify-content: center; margin: 18px 0; color: var(--muted); font-size: 12px;">
+      <span style="height: 0.5px; background: var(--border); flex: 1;"></span>
+      <span style="padding: 0 10px;">OR</span>
+      <span style="height: 0.5px; background: var(--border); flex: 1;"></span>
+    </div>
+
+    <!-- Google Sign In Button Container -->
+    <div id="googleBtnContainer" style="display: flex; justify-content: center; width: 100%; min-height: 40px; margin-top: 6px;">
+      <div id="g_id_onload"
+           data-client_id="" 
+           data-context="signin"
+           data-ux_mode="popup"
+           data-callback="handleCredentialResponse"
+           data-auto_prompt="false">
+      </div>
+      <div class="g_id_signin"
+           data-type="standard"
+           data-shape="rectangular"
+           data-theme="dark"
+           data-text="signin_with"
+           data-size="large"
+           data-logo_alignment="left"
+           data-width="320">
+      </div>
     </div>
 
   </div>
@@ -521,8 +549,68 @@ let adminOrdersCache = [];
 // INIT
 // =============================================
 window.onload = async function() {
+  initGoogleAuth();
   if (token) loadDashboard();
 };
+
+async function initGoogleAuth() {
+  try {
+    const res = await fetch(API + '/config').then(r => r.json());
+    if (res.google_client_id && res.google_client_id !== 'YOUR_GOOGLE_CLIENT_ID_HERE') {
+      const gOnload = document.getElementById('g_id_onload');
+      if (gOnload) {
+        gOnload.setAttribute('data-client_id', res.google_client_id);
+      }
+      
+      // Wait for google script to be fully loaded and initialized
+      let checkGoogleCount = 0;
+      const checkGoogleInterval = setInterval(() => {
+        if (window.google && window.google.accounts && window.google.accounts.id) {
+          clearInterval(checkGoogleInterval);
+          google.accounts.id.initialize({
+            client_id: res.google_client_id,
+            callback: handleCredentialResponse
+          });
+          google.accounts.id.renderButton(
+            document.getElementById("googleBtnContainer"),
+            { theme: "dark", size: "large", width: 320, shape: "rectangular" }
+          );
+        } else {
+          checkGoogleCount++;
+          if (checkGoogleCount > 30) clearInterval(checkGoogleInterval); // Timeout after 3 seconds
+        }
+      }, 100);
+      
+    } else {
+      document.getElementById('googleBtnContainer').style.display = 'none';
+      // Hide the OR divider too!
+      const divider = document.getElementById('googleBtnContainer').previousElementSibling;
+      if (divider) divider.style.display = 'none';
+    }
+  } catch (err) {
+    console.error('Google Client ID config fetch failed:', err);
+    document.getElementById('googleBtnContainer').style.display = 'none';
+  }
+}
+
+async function handleCredentialResponse(response) {
+  const credential = response.credential;
+  
+  const data = await fetch(API + '/auth/google', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ credential })
+  }).then(r => r.json());
+
+  if (!data.success) {
+    return showAlert('loginAlert', data.message, 'error');
+  }
+
+  token = data.token;
+  localStorage.setItem('smm_token', token);
+  currentUser = data.user;
+  loadDashboard();
+}
 
 async function api(path, method='GET', body=null) {
   const opts = {
