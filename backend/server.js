@@ -401,37 +401,6 @@ function requireAdmin(req, res, next) {
   });
 }
 
-// Debug live database state
-app.get('/api/admin/debug-db', requireAdmin, (req, res) => {
-  const services = db.prepare('SELECT * FROM services WHERE active = 1').all();
-  const counts = {};
-  for (const s of services) {
-    counts[s.platform] = (counts[s.platform] || 0) + 1;
-  }
-  res.json({
-    success: true,
-    totalServices: services.length,
-    counts,
-    sampleInsta: services.filter(s => s.platform === 'instagram').slice(0, 3)
-  });
-});
-
-// Reset all services (admin only)
-app.post('/api/admin/reset-services', requireAdmin, async (req, res) => {
-  try {
-    db.dangerouslyResetServices();
-    await db.syncCloud();
-    res.json({ success: true, message: 'All services successfully reset. Re-import can now be executed.' });
-  } catch (err) {
-    res.json({ success: false, message: err.message });
-  }
-});
-
-// View Vercel KV cloud sync logs (admin only)
-app.get('/api/admin/sync-logs', requireAdmin, (req, res) => {
-  res.json({ success: true, logs: db.getSyncLogs() });
-});
-
 // =============================================
 // SMM PROVIDER ADMIN ROUTES
 // =============================================
@@ -440,52 +409,6 @@ app.get('/api/admin/sync-logs', requireAdmin, (req, res) => {
 app.get('/api/admin/provider-balance', requireAdmin, async (req, res) => {
   const result = await smm.getProviderBalance();
   res.json(result);
-});
-
-// Test Vercel KV connection and API format
-app.get('/api/admin/test-kv', requireAdmin, async (req, res) => {
-  const url = process.env.KV_REST_API_URL;
-  const token = process.env.KV_REST_API_TOKEN;
-  if (!url || !token) {
-    return res.json({ success: false, message: 'Vercel KV env variables not found' });
-  }
-  
-  try {
-    // Test 1: Get db_json
-    const getRes = await fetch(`${url}/get/db_json`, {
-      headers: { 'Authorization': `Bearer ${token}` }
-    });
-    const getBody = await getRes.json();
-    
-    // Test 2: Try writing a test key using standard REST path
-    const setRes = await fetch(`${url}/set/test_key/123`, {
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${token}` }
-    });
-    const setBody = await setRes.json();
-    
-    // Test 3: Try writing using command array POST (standard Upstash)
-    const cmdRes = await fetch(url, {
-      method: 'POST',
-      headers: { 
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(['SET', 'test_key_cmd', '456'])
-    });
-    const cmdBody = await cmdRes.json();
-    
-    res.json({
-      success: true,
-      url,
-      token: token.substring(0, 10) + '...',
-      getBody,
-      setBody,
-      cmdBody
-    });
-  } catch (err) {
-    res.json({ success: false, error: err.message });
-  }
 });
 
 // Import services from provider into DB
