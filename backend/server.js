@@ -387,6 +387,20 @@ app.get('/api/admin/users', requireAdmin, (req, res) => {
   }
 });
 
+// Set exact balance for a user (admin only) - used to reset fake seed balances
+app.post('/api/admin/users/:id/set-balance', requireAdmin, async (req, res) => {
+  const { balance } = req.body;
+  const userId = Number(req.params.id);
+  if (balance === undefined || isNaN(balance)) return res.json({ success: false, message: 'Invalid balance' });
+  try {
+    db.prepare('UPDATE users SET balance = ? WHERE id = ?').run(balance, userId);
+    await db.syncCloud();
+    res.json({ success: true, message: `Balance set to ₹${balance}`, new_balance: balance });
+  } catch (err) {
+    res.json({ success: false, message: err.message });
+  }
+});
+
 // Adjust any user's balance (credit or debit)
 app.post('/api/admin/users/:id/balance', requireAdmin, async (req, res) => {
   const { amount, note } = req.body; // positive to credit, negative to debit
