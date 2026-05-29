@@ -166,56 +166,18 @@ tr:hover td { background:rgba(255,255,255,0.02); }
 <!-- LOGIN PAGE -->
 <!-- ============================== -->
 <div id="loginPage">
-  <div class="login-box">
-    <div class="login-logo">Boost<span>Gram</span></div>
-    <div class="login-sub">India's #1 SMM Panel</div>
+  <div class="login-box" style="max-width: 380px; padding: 40px 24px; text-align: center;">
+    <div class="login-logo" style="margin-bottom: 8px;">Boost<span>Gram</span></div>
+    <div class="login-sub" style="margin-bottom: 24px;">India's #1 SMM Panel</div>
 
-    <div class="login-tabs">
-      <button class="ltab active" onclick="switchTab('login')">Login</button>
-      <button class="ltab" onclick="switchTab('register')">Register</button>
-    </div>
+    <div id="loginAlert" class="alert" style="margin-bottom: 20px;"></div>
 
-    <div id="loginAlert" class="alert"></div>
-
-    <!-- Login Form -->
-    <div id="loginForm">
-      <div class="form-group">
-        <label class="form-label">Email</label>
-        <input class="form-input" id="loginEmail" type="email" placeholder="you@email.com" />
-      </div>
-      <div class="form-group">
-        <label class="form-label">Password</label>
-        <input class="form-input" id="loginPassword" type="password" placeholder="••••••••" />
-      </div>
-      <button class="submit-btn" onclick="doLogin()">Login →</button>
-    </div>
-
-    <!-- Register Form -->
-    <div id="registerForm" class="hidden">
-      <div class="form-group">
-        <label class="form-label">Full Name</label>
-        <input class="form-input" id="regName" type="text" placeholder="Your Name" />
-      </div>
-      <div class="form-group">
-        <label class="form-label">Email</label>
-        <input class="form-input" id="regEmail" type="email" placeholder="you@email.com" />
-      </div>
-      <div class="form-group">
-        <label class="form-label">Password</label>
-        <input class="form-input" id="regPassword" type="password" placeholder="Min 6 characters" />
-      </div>
-      <button class="submit-btn" onclick="doRegister()">Create Account →</button>
-    </div>
-
-    <!-- OR Divider + Google Login -->
-    <div style="display: flex; align-items: center; justify-content: center; margin: 18px 0; color: var(--muted); font-size: 12px;">
-      <span style="height: 0.5px; background: var(--border); flex: 1;"></span>
-      <span style="padding: 0 10px;">OR</span>
-      <span style="height: 0.5px; background: var(--border); flex: 1;"></span>
-    </div>
+    <p style="font-size: 13px; color: var(--muted); margin-bottom: 24px; line-height: 1.6;">
+      Welcome to BoostGram SMM Panel. Please sign in with your Google account to access your account, place orders, and add funds.
+    </p>
 
     <!-- Google Sign In Button Container -->
-    <div id="googleBtnContainer" style="display: flex; justify-content: center; width: 100%; min-height: 40px; margin-top: 6px;">
+    <div id="googleBtnContainer" style="display: flex; justify-content: center; width: 100%; min-height: 40px;">
       <div id="g_id_onload"
            data-client_id="" 
            data-context="signin"
@@ -665,13 +627,9 @@ async function doLogin() {
 
 async function doRegister() {
   const name = document.getElementById('regName').value;
-  const email = document.getElementById('regEmail').value.trim();
+  const email = document.getElementById('regEmail').value;
   const password = document.getElementById('regPassword').value;
   if (!name || !email || !password) return showAlert('loginAlert', 'Fill all fields', 'error');
-
-  if (!email.toLowerCase().endsWith('@gmail.com')) {
-    return showAlert('loginAlert', 'Only original Gmail addresses (@gmail.com) are allowed', 'error');
-  }
 
   const data = await fetch(API + '/register', {
     method: 'POST',
