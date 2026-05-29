@@ -648,7 +648,8 @@ function renderServices(platform) {
   const sel = document.getElementById('serviceSelect');
   sel.innerHTML = '<option value="">Select a service</option>';
   servicesCache[platform].forEach(s => {
-    sel.innerHTML += `<option value="${s.id}" data-rate="${s.rate}" data-original="${(s.rate / 2.0).toFixed(4)}" data-min="${s.min_qty}" data-max="${s.max_qty}" data-delivery="${s.delivery_time}">${s.name} — ₹${s.rate}/1000</option>`;
+    const originalRate = s.original_rate !== undefined ? parseFloat(s.original_rate).toFixed(4) : parseFloat((s.rate / 2.0).toFixed(4));
+    sel.innerHTML += `<option value="${s.id}" data-rate="${s.rate}" data-original="${originalRate}" data-min="${s.min_qty}" data-max="${s.max_qty}" data-delivery="${s.delivery_time}">${s.name} — ₹${s.rate}/1000</option>`;
   });
   updateServiceInfo();
 }
@@ -1044,7 +1045,7 @@ function renderAdminServices(services) {
     return;
   }
   tbody.innerHTML = services.map(s => {
-    const wholesalePrice = parseFloat((s.rate / 2.0).toFixed(4));
+    const wholesalePrice = s.original_rate !== undefined ? parseFloat(s.original_rate) : parseFloat((s.rate / 2.0).toFixed(4));
     const sellingPrice = parseFloat(s.rate).toFixed(2);
     const profit = parseFloat((s.rate - wholesalePrice).toFixed(2));
     

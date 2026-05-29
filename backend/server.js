@@ -491,13 +491,17 @@ app.post('/api/admin/import-services', requireAdmin, async (req, res) => {
     let updated = 0;
     for (const s of services) {
       const platform = guessPlatform(s.category);
-      const newRate = parseFloat((s.rate * 2.0).toFixed(4));
+      const wholesaleRate = parseFloat(s.rate);
+      
+      // Below 1 Rs wholesale gets 500% markup (6.0x multiplier), 1 Rs and above gets 100% markup (2.0x multiplier)
+      const markupMultiplier = wholesaleRate < 1.0 ? 6.0 : 2.0;
+      const newRate = parseFloat((wholesaleRate * markupMultiplier).toFixed(4));
 
-      // 1. If provider_service_id already exists → update rate to 100% markup
+      // 1. If provider_service_id already exists → update rate to markup
       const exists = db.prepare('SELECT id FROM services WHERE provider_service_id = ?').get(String(s.service));
       if (exists) {
-        db.prepare('UPDATE services SET rate = ?, min_qty = ?, max_qty = ? WHERE id = ?')
-          .run(newRate, s.min, s.max, exists.id);
+        db.prepare('UPDATE services SET rate = ?, original_rate = ?, min_qty = ?, max_qty = ? WHERE id = ?')
+          .run(newRate, wholesaleRate, s.min, s.max, exists.id);
         updated++;
         continue;
       }
@@ -506,21 +510,22 @@ app.post('/api/admin/import-services', requireAdmin, async (req, res) => {
       const existsByName = db.prepare('SELECT id FROM services WHERE platform = ? AND LOWER(name) = ?').get(platform, s.name.trim().toLowerCase());
       if (existsByName) {
         // Update rate + link provider_service_id
-        db.prepare('UPDATE services SET rate = ?, provider_service_id = ?, min_qty = ?, max_qty = ? WHERE id = ?')
-          .run(newRate, String(s.service), s.min, s.max, existsByName.id);
+        db.prepare('UPDATE services SET rate = ?, original_rate = ?, provider_service_id = ?, min_qty = ?, max_qty = ? WHERE id = ?')
+          .run(newRate, wholesaleRate, String(s.service), s.min, s.max, existsByName.id);
         updated++;
         continue;
       }
 
       // 3. Insert brand new service
       db.prepare(`
-        INSERT INTO services (platform, name, description, rate, min_qty, max_qty, delivery_time, provider_service_id, active)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1)
+        INSERT INTO services (platform, name, description, rate, original_rate, min_qty, max_qty, delivery_time, provider_service_id, active)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
       `).run(
         platform,
         s.name,
         s.category,
-        newRate, // 100% margin for your profit
+        newRate,
+        wholesaleRate,
         s.min,
         s.max,
         s.average_time || 'Varies',
