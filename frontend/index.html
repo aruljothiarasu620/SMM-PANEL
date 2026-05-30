@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>BoostGram — SMM Panel</title>
+<title>instaboost — SMM Panel</title>
 <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <style>
@@ -166,18 +166,34 @@ tr:hover td { background:rgba(255,255,255,0.02); }
 <!-- LOGIN PAGE -->
 <!-- ============================== -->
 <div id="loginPage">
-  <div class="login-box" style="max-width: 380px; padding: 40px 24px; text-align: center;">
-    <div class="login-logo" style="margin-bottom: 8px;">Boost<span>Gram</span></div>
+  <div class="login-box" style="max-width: 380px; padding: 30px 24px; text-align: center;">
+    <div class="login-logo" style="margin-bottom: 8px;">insta<span>boost</span></div>
     <div class="login-sub" style="margin-bottom: 24px;">India's #1 SMM Panel</div>
 
     <div id="loginAlert" class="alert" style="margin-bottom: 20px;"></div>
 
-    <p style="font-size: 13px; color: var(--muted); margin-bottom: 24px; line-height: 1.6;">
-      Welcome to BoostGram SMM Panel. Please sign in with your Google account to access your account, place orders, and add funds.
-    </p>
+    <!-- Email/Password Login Form -->
+    <div id="loginForm" style="margin-bottom: 20px; text-align: left;">
+      <div class="form-group">
+        <label class="form-label">Email Address</label>
+        <input class="form-input" id="loginEmail" type="email" placeholder="admin@example.com" style="margin-top: 4px;" />
+      </div>
+      <div class="form-group" style="margin-top: 12px;">
+        <label class="form-label">Password</label>
+        <input class="form-input" id="loginPassword" type="password" placeholder="••••••" style="margin-top: 4px;" />
+      </div>
+      <button class="submit-btn" style="margin-top: 16px;" onclick="doLogin()">Sign In →</button>
+    </div>
+
+    <!-- Divider -->
+    <div style="display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 20px; color: var(--muted); font-size: 11px;">
+      <div style="flex: 1; height: 0.5px; background: var(--border);"></div>
+      <span>OR CONTINUE WITH</span>
+      <div style="flex: 1; height: 0.5px; background: var(--border);"></div>
+    </div>
 
     <!-- Google Sign In Button Container -->
-    <div id="googleBtnContainer" style="display: flex; justify-content: center; width: 100%; min-height: 40px;">
+    <div id="googleBtnContainer" style="display: flex; justify-content: center; width: 100%; min-height: 40px; margin-bottom: 10px;">
       <div id="g_id_onload"
            data-client_id="" 
            data-context="signin"
@@ -204,7 +220,7 @@ tr:hover td { background:rgba(255,255,255,0.02); }
 <!-- ============================== -->
 <div id="dashboard" class="hidden">
   <nav class="nav">
-    <div class="logo">Boost<span>Gram</span></div>
+    <div class="logo">insta<span>boost</span></div>
     <div class="nav-right">
       <div class="balance-chip">💰 ₹<span id="navBalance">0.00</span></div>
       <span id="navName" style="font-size:14px;color:var(--muted)"></span>
@@ -366,9 +382,9 @@ tr:hover td { background:rgba(255,255,255,0.02); }
         <!-- Admin Navigation Sub-Tabs -->
         <div style="display: flex; gap: 10px; margin-bottom: 24px; border-bottom: 0.5px solid var(--border); padding-bottom: 12px; flex-wrap: wrap;">
           <button class="nav-btn" style="background: rgba(108,99,255,0.15); color: var(--accent); border: 0.5px solid var(--accent);" onclick="switchAdminTab('adminStats')">📊 Overview Stats</button>
-          <button class="nav-btn" style="background: transparent; border: 0.5px solid var(--border); color: var(--muted);" onclick="switchAdminTab('adminUsers')">👥 User Database</button>
+          <button id="btnAdminUsers" class="nav-btn" style="background: transparent; border: 0.5px solid var(--border); color: var(--muted);" onclick="switchAdminTab('adminUsers')">👥 User Database</button>
           <button class="nav-btn" style="background: transparent; border: 0.5px solid var(--border); color: var(--muted);" onclick="switchAdminTab('adminOrders')">📋 Global Orders</button>
-          <button class="nav-btn" style="background: transparent; border: 0.5px solid var(--border); color: var(--muted);" onclick="switchAdminTab('adminServices')">🔌 SMM Services</button>
+          <button id="btnAdminServices" class="nav-btn" style="background: transparent; border: 0.5px solid var(--border); color: var(--muted);" onclick="switchAdminTab('adminServices')">🔌 SMM Services</button>
         </div>
 
         <div id="adminAlert" class="alert"></div>
@@ -385,6 +401,35 @@ tr:hover td { background:rgba(255,255,255,0.02); }
             <h3 style="margin-bottom: 12px;">SMM Provider Connection Status</h3>
             <p style="font-size: 14px; color: var(--muted); margin-bottom: 18px;" id="adminProviderStatus">Checking API status...</p>
             <button class="nav-btn" onclick="checkProviderBalance()">🔄 Refresh Provider Balance</button>
+          </div>
+          
+          <!-- Premium Super Admin Features -->
+          <div id="superAdminSection" style="display: none; margin-top: 24px;">
+            <div style="border-top: 1px solid var(--border); padding-top: 20px; margin-bottom: 16px;">
+              <h3 style="display: flex; align-items: center; gap: 8px;"><span style="color: #ffc800;">⚡</span> Super Admin Terminal & Advanced Metrics</h3>
+            </div>
+            
+            <div class="stats-row">
+              <div class="stat-card" style="border-color: rgba(255, 200, 0, 0.35); background: rgba(255, 200, 0, 0.015);">
+                <div class="lbl">Estimated Platform Net Profits</div>
+                <div class="val green" id="superAdminNetProfit">₹0.00</div>
+              </div>
+              <div class="stat-card" style="border-color: rgba(108, 99, 255, 0.35); background: rgba(108, 99, 255, 0.015);">
+                <div class="lbl">Active Database Size</div>
+                <div class="val accent" id="superAdminDbSize">0 records</div>
+              </div>
+            </div>
+
+            <!-- Beautiful terminal sync logs console -->
+            <div style="background: #05050a; border: 0.5px solid var(--border); border-radius: 12px; padding: 18px; font-family: 'Consolas', 'Courier New', monospace; margin-top: 16px;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 0.5px solid rgba(255,255,255,0.08); padding-bottom: 8px;">
+                <span style="color: var(--accent); font-weight: bold; font-size: 12px; letter-spacing: 0.5px;">💻 REAL-TIME DATABASE SYNC LOGS CONSOLE</span>
+                <span id="consoleStatus" style="font-size: 11px; color: var(--green); font-weight: 600; display: flex; align-items: center; gap: 4px;">🟢 LIVE REFRESH</span>
+              </div>
+              <div id="syncLogsTerminal" style="height: 150px; overflow-y: auto; font-size: 11.5px; color: #00ffaa; line-height: 1.5; white-space: pre-wrap; display: flex; flex-direction: column;">
+                Loading system logs...
+              </div>
+            </div>
           </div>
         </div>
 
@@ -434,7 +479,7 @@ tr:hover td { background:rgba(255,255,255,0.02); }
             <h3 style="margin-bottom: 8px;">Import Services from Provider</h3>
             <p style="font-size: 13px; color: var(--muted); margin-bottom: 18px;">
               This will import all wholesale services from the connected SMM API provider. 
-              It automatically maps them and adds a <strong>100% markup</strong> profit margin to the rate charged to users.
+              It automatically maps them and adds a <strong>30% markup</strong> profit margin to the rate charged to users.
             </p>
             <button class="nav-btn" id="importServicesBtn" onclick="importServicesFromProvider()">🔌 Import Services Now</button>
           </div>
@@ -452,7 +497,7 @@ tr:hover td { background:rgba(255,255,255,0.02); }
                   <th>Platform</th>
                   <th>Service Name</th>
                   <th style="text-align: right;">Wholesale Cost (Original)</th>
-                  <th style="text-align: right;">Selling Price (100% Markup)</th>
+                  <th style="text-align: right;">Selling Price (30% Markup)</th>
                   <th style="text-align: right;">Net Profit</th>
                 </tr>
               </thead>
@@ -662,6 +707,21 @@ async function loadDashboard() {
   const adminMenu = document.getElementById('adminMenuItem');
   if (currentUser.role === 'admin') {
     adminMenu.classList.remove('hidden');
+    
+    // Manage dynamic visibility for admin vs super-admin
+    const isSuperAdmin = currentUser.email.toLowerCase() === 'aruljothiarasu620@gmail.com';
+    const uBtn = document.getElementById('btnAdminUsers');
+    const sBtn = document.getElementById('btnAdminServices');
+    
+    if (uBtn && sBtn) {
+      if (isSuperAdmin) {
+        uBtn.style.display = 'inline-block';
+        sBtn.style.display = 'inline-block';
+      } else {
+        uBtn.style.display = 'none';
+        sBtn.style.display = 'none';
+      }
+    }
   } else {
     adminMenu.classList.add('hidden');
   }
@@ -698,7 +758,7 @@ function renderServices(platform) {
   const sel = document.getElementById('serviceSelect');
   sel.innerHTML = '<option value="">Select a service</option>';
   servicesCache[platform].forEach(s => {
-    const orig = s.original_rate !== undefined && s.original_rate !== null ? s.original_rate : (s.rate / 2.0);
+    const orig = s.original_rate !== undefined && s.original_rate !== null ? s.original_rate : (s.rate / 1.30);
     sel.innerHTML += `<option value="${s.id}" data-rate="${s.rate}" data-original="${parseFloat(orig).toFixed(4)}" data-min="${s.min_qty}" data-max="${s.max_qty}" data-delivery="${s.delivery_time}">${s.name} — ₹${s.rate}/1000</option>`;
   });
   updateServiceInfo();
@@ -818,7 +878,7 @@ async function startPayment() {
     key: data.key,
     amount: data.amount,
     currency: data.currency,
-    name: 'BoostGram',
+    name: 'instaboost',
     description: 'Wallet Recharge',
     order_id: data.order_id,
     handler: async (response) => {
@@ -901,7 +961,47 @@ function hideAlert(id) {
 // =============================================
 // ADMIN PANEL CONTROL HANDLERS
 // =============================================
+let logsInterval = null;
+function startLogsPolling() {
+  if (logsInterval) clearInterval(logsInterval);
+  pollSyncLogs();
+  logsInterval = setInterval(pollSyncLogs, 3000);
+}
+
+function stopLogsPolling() {
+  if (logsInterval) {
+    clearInterval(logsInterval);
+    logsInterval = null;
+  }
+}
+
+async function pollSyncLogs() {
+  const terminal = document.getElementById('syncLogsTerminal');
+  if (!terminal) return;
+  try {
+    const data = await api('/admin/system-logs');
+    if (data.success && data.logs) {
+      if (data.logs.length === 0) {
+        terminal.textContent = 'System is idle. No sync transactions recorded yet.';
+      } else {
+        terminal.textContent = data.logs.join('\n');
+        terminal.scrollTop = terminal.scrollHeight;
+      }
+    } else {
+      terminal.textContent = 'Error loading logs: ' + (data.message || 'Unauthorized');
+    }
+  } catch (err) {
+    terminal.textContent = 'Failed to connect to backend console log feed.';
+  }
+}
+
 function switchAdminTab(id) {
+  const isSuperAdmin = currentUser && currentUser.email.toLowerCase() === 'aruljothiarasu620@gmail.com';
+  if ((id === 'adminUsers' || id === 'adminServices') && !isSuperAdmin) {
+    showAlert('adminAlert', 'Access Denied: Super Admin role required to view this tab.', 'error');
+    return;
+  }
+
   document.querySelectorAll('.admin-subpage').forEach(p => p.style.display = 'none');
   document.getElementById('adminSub-' + id).style.display = 'block';
   
@@ -917,7 +1017,12 @@ function switchAdminTab(id) {
 
   if (id === 'adminUsers') loadAdminUsers();
   if (id === 'adminOrders') loadAdminOrders();
-  if (id === 'adminStats') checkProviderBalance();
+  if (id === 'adminStats') {
+    checkProviderBalance();
+    if (isSuperAdmin) startLogsPolling();
+  } else {
+    stopLogsPolling();
+  }
   if (id === 'adminServices') loadAdminServices();
 }
 
@@ -926,6 +1031,29 @@ async function loadAdminStats(users, orders) {
   const totalBal = users.reduce((acc, u) => acc + (u.balance || 0), 0);
   document.getElementById('adminTotalBalance').textContent = '₹' + totalBal.toFixed(2);
   document.getElementById('adminTotalOrders').textContent = orders.length;
+  
+  // Calculate and display advanced stats for super admin
+  const isSuperAdmin = currentUser && currentUser.email.toLowerCase() === 'aruljothiarasu620@gmail.com';
+  const superSection = document.getElementById('superAdminSection');
+  if (superSection) {
+    if (isSuperAdmin) {
+      superSection.style.display = 'block';
+      const netProfitTotal = orders.reduce((acc, o) => {
+        const charge = parseFloat(o.charge) || 0;
+        const profit = charge - (charge / 1.30); // 30% markup logic
+        return acc + profit;
+      }, 0);
+      document.getElementById('superAdminNetProfit').textContent = '₹' + netProfitTotal.toFixed(2);
+      
+      const dbSize = users.length + orders.length + (adminServicesCache ? adminServicesCache.length : 0);
+      document.getElementById('superAdminDbSize').textContent = `${dbSize} records`;
+      
+      startLogsPolling();
+    } else {
+      superSection.style.display = 'none';
+      stopLogsPolling();
+    }
+  }
 }
 
 async function checkProviderBalance() {
@@ -1095,7 +1223,7 @@ function renderAdminServices(services) {
     return;
   }
   tbody.innerHTML = services.map(s => {
-    const wholesalePrice = s.original_rate !== undefined && s.original_rate !== null ? parseFloat(s.original_rate) : parseFloat((s.rate / 2.0).toFixed(4));
+    const wholesalePrice = s.original_rate !== undefined && s.original_rate !== null ? parseFloat(s.original_rate) : parseFloat((s.rate / 1.30).toFixed(4));
     const sellingPrice = parseFloat(s.rate).toFixed(2);
     const profit = parseFloat((s.rate - wholesalePrice).toFixed(2));
     

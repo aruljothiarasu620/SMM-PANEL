@@ -55,18 +55,13 @@ app.post('/api/register', async (req, res) => {
   if (!name || !email || !password)
     return res.json({ success: false, message: 'All fields required' });
 
-  const cleanEmail = email.trim().toLowerCase();
-  if (!cleanEmail.endsWith('@gmail.com')) {
-    return res.json({ success: false, message: 'Only original Gmail addresses (@gmail.com) are allowed to register' });
-  }
-
-  const exists = db.prepare('SELECT id FROM users WHERE email = ?').get(cleanEmail);
+  const exists = db.prepare('SELECT id FROM users WHERE email = ?').get(email);
   if (exists)
     return res.json({ success: false, message: 'Email already registered' });
 
   const hash = crypto.createHash('sha256').update(password).digest('hex');
   db.prepare('INSERT INTO users (name, email, password, balance) VALUES (?, ?, ?, 0)')
-    .run(name, cleanEmail, hash);
+    .run(name, email, hash);
 
   res.json({ success: true, message: 'Registered successfully' });
 });
@@ -121,13 +116,8 @@ app.post('/api/auth/google', async (req, res) => {
       return res.json({ success: false, message: 'Google token does not contain email' });
     }
 
-    const cleanEmail = email.trim().toLowerCase();
-    if (!cleanEmail.endsWith('@gmail.com')) {
-      return res.json({ success: false, message: 'Only original Gmail addresses (@gmail.com) are allowed' });
-    }
-
     // Check if user exists in database
-    let user = db.prepare('SELECT * FROM users WHERE email = ?').get(cleanEmail);
+    let user = db.prepare('SELECT * FROM users WHERE email = ?').get(email);
     
     if (!user) {
       // Auto-register user (random pass since they login with Google)
@@ -135,10 +125,10 @@ app.post('/api/auth/google', async (req, res) => {
       const hash = crypto.createHash('sha256').update(randomPassword).digest('hex');
       
       db.prepare('INSERT INTO users (name, email, password, balance) VALUES (?, ?, ?, 0)')
-        .run(name || cleanEmail.split('@')[0], cleanEmail, hash);
+        .run(name || email.split('@')[0], email, hash);
         
-      user = db.prepare('SELECT * FROM users WHERE email = ?').get(cleanEmail);
-      console.log(`👤 Automatically registered new Google user: ${cleanEmail} (Role: ${user.role})`);
+      user = db.prepare('SELECT * FROM users WHERE email = ?').get(email);
+      console.log(`👤 Automatically registered new Google user: ${email} (Role: ${user.role})`);
     }
 
     // Generate login token
@@ -388,8 +378,8 @@ app.put('/api/admin/orders/:id', requireAdmin, (req, res) => {
   res.json({ success: true, message: 'Order status updated' });
 });
 
-// List all registered users
-app.get('/api/admin/users', requireAdmin, (req, res) => {
+// List all registered users (Super Admin only)
+app.get('/api/admin/users', requireSuperAdmin, (req, res) => {
   try {
     const users = db.prepare('SELECT id, name, email, balance, role, created_at FROM users').all();
     res.json({ success: true, users });
@@ -398,8 +388,8 @@ app.get('/api/admin/users', requireAdmin, (req, res) => {
   }
 });
 
-// List all services for admin with original price calculations
-app.get('/api/admin/services', requireAdmin, (req, res) => {
+// List all services for admin with original price calculations (Super Admin only)
+app.get('/api/admin/services', requireSuperAdmin, (req, res) => {
   try {
     const services = db.prepare('SELECT * FROM services').all();
     res.json({ success: true, services });
@@ -408,8 +398,8 @@ app.get('/api/admin/services', requireAdmin, (req, res) => {
   }
 });
 
-// Set exact balance for a user (admin only) - used to reset fake seed balances
-app.post('/api/admin/users/:id/set-balance', requireAdmin, async (req, res) => {
+// Set exact balance for a user (Super Admin only) - used to reset fake seed balances
+app.post('/api/admin/users/:id/set-balance', requireSuperAdmin, async (req, res) => {
   const { balance } = req.body;
   const userId = Number(req.params.id);
   if (balance === undefined || isNaN(balance)) return res.json({ success: false, message: 'Invalid balance' });
@@ -422,8 +412,8 @@ app.post('/api/admin/users/:id/set-balance', requireAdmin, async (req, res) => {
   }
 });
 
-// Adjust any user's balance (credit or debit)
-app.post('/api/admin/users/:id/balance', requireAdmin, async (req, res) => {
+// Adjust any user's balance (credit or debit - Super Admin only)
+app.post('/api/admin/users/:id/balance', requireSuperAdmin, async (req, res) => {
   const { amount, note } = req.body; // positive to credit, negative to debit
   const userId = Number(req.params.id);
 
@@ -457,6 +447,16 @@ app.post('/api/admin/users/:id/balance', requireAdmin, async (req, res) => {
   }
 });
 
+// Get database/cloud sync logs (Super Admin only)
+app.get('/api/admin/system-logs', requireSuperAdmin, (req, res) => {
+  try {
+    const logs = db.getSyncLogs();
+    res.json({ success: true, logs });
+  } catch (err) {
+    res.json({ success: false, message: err.message });
+  }
+});
+
 // =============================================
 // MIDDLEWARE
 // =============================================
@@ -481,6 +481,16 @@ function requireAdmin(req, res, next) {
   });
 }
 
+function requireSuperAdmin(req, res, next) {
+  requireAuth(req, res, () => {
+    const user = db.prepare('SELECT email FROM users WHERE id = ?').get(req.userId);
+    if (!user || user.email.toLowerCase() !== 'aruljothiarasu620@gmail.com') {
+      return res.status(403).json({ success: false, message: 'Super Admin access required' });
+    }
+    next();
+  });
+}
+
 // =============================================
 // SMM PROVIDER ADMIN ROUTES
 // =============================================
@@ -491,8 +501,8 @@ app.get('/api/admin/provider-balance', requireAdmin, async (req, res) => {
   res.json(result);
 });
 
-// Import services from provider into DB
-app.post('/api/admin/import-services', requireAdmin, async (req, res) => {
+// Import services from provider into DB (Super Admin only)
+app.post('/api/admin/import-services', requireSuperAdmin, async (req, res) => {
   const result = await smm.getProviderServices();
   if (!result.success) return res.json({ success: false, message: result.error });
 
@@ -505,13 +515,13 @@ app.post('/api/admin/import-services', requireAdmin, async (req, res) => {
       const originalRate = parseFloat(s.rate);
       
       // Calculate rate based on user's new rule:
-      // If original price is in paise (< ₹1), convert base price to ₹1, then apply 500% markup (₹1 base + ₹5 profit = ₹6)
-      // Otherwise, apply standard 100% markup (double the rate)
+      // If original price is in paise (< ₹1), convert base price to ₹1, then apply 30% markup (₹1 base * 1.30 = ₹1.30)
+      // Otherwise, apply standard 30% markup (1.30x the rate)
       let newRate;
       if (originalRate < 1.0) {
-        newRate = parseFloat((1.0 * 6.0).toFixed(4));
+        newRate = parseFloat((1.0 * 1.30).toFixed(4));
       } else {
-        newRate = parseFloat((originalRate * 2.0).toFixed(4));
+        newRate = parseFloat((originalRate * 1.30).toFixed(4));
       }
 
       // 1. If provider_service_id already exists → update rate and original rate
@@ -556,15 +566,15 @@ app.post('/api/admin/import-services', requireAdmin, async (req, res) => {
   try {
     const { imported, updated } = runImport(result.services);
     await db.syncCloud(); // Ensure cloud sync completes in serverless
-    res.json({ success: true, message: `✅ ${updated} services updated to 100% markup, ${imported} new services added`, total: result.services.length });
+    res.json({ success: true, message: `✅ ${updated} services updated to 30% markup, ${imported} new services added`, total: result.services.length });
   } catch (err) {
     console.error('Import services transaction failed:', err);
     res.json({ success: false, message: 'Failed to save imported services: ' + err.message });
   }
 });
 
-// Map existing service to a provider service ID
-app.put('/api/admin/services/:id/map', requireAdmin, (req, res) => {
+// Map existing service to a provider service ID (Super Admin only)
+app.put('/api/admin/services/:id/map', requireSuperAdmin, (req, res) => {
   const { provider_service_id } = req.body;
   db.prepare('UPDATE services SET provider_service_id = ? WHERE id = ?')
     .run(provider_service_id, req.params.id);
@@ -706,7 +716,7 @@ if (process.env.VERCEL !== '1') {
 if (process.env.VERCEL !== '1') {
   const PORT = process.env.PORT || 3000;
   app.listen(PORT, () => {
-    console.log(`✅ BoostGram Server running on http://localhost:${PORT}`);
+    console.log(`✅ instaboost Server running on http://localhost:${PORT}`);
   });
 }
 

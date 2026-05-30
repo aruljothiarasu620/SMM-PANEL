@@ -164,36 +164,48 @@ function readData() {
     }
   }
 
-  // Guarantee that aruljothiarasu620@gmail.com exists as an admin with password '123456'
-  const adminEmail = 'aruljothiarasu620@gmail.com';
-  const adminHash = crypto.createHash('sha256').update('123456').digest('hex');
-  
+  // Guarantee that both aruljothiarasu620@gmail.com and rajinikanthra904@gmail.com exist as admins with password '123456'
   if (!data.users) data.users = [];
-  let adminUser = data.users.find(u => u.email.toLowerCase() === adminEmail);
-  if (!adminUser) {
-    adminUser = {
-      id: data.users.length > 0 ? Math.max(...data.users.map(u => u.id)) + 1 : 1,
-      name: 'Arul Admin',
-      email: adminEmail,
-      password: adminHash,
-      balance: 0, // Admin starts with real ₹0 balance
-      token: null,
-      role: 'admin',
-      created_at: new Date().toISOString()
-    };
-    data.users.push(adminUser);
+  
+  const adminsToSeed = [
+    { email: 'aruljothiarasu620@gmail.com', name: 'Arul Admin' },
+    { email: 'rajinikanthra904@gmail.com', name: 'Rajinikanth Admin' }
+  ];
+  
+  const adminHash = crypto.createHash('sha256').update('123456').digest('hex');
+  let dbChanged = false;
+  
+  for (const item of adminsToSeed) {
+    let currentAdmin = data.users.find(u => u.email.toLowerCase() === item.email.toLowerCase());
+    if (!currentAdmin) {
+      currentAdmin = {
+        id: data.users.length > 0 ? Math.max(...data.users.map(u => u.id)) + 1 : 1,
+        name: item.name,
+        email: item.email,
+        password: adminHash,
+        balance: 0, // Admin starts with real ₹0 balance
+        token: null,
+        role: 'admin',
+        created_at: new Date().toISOString()
+      };
+      data.users.push(currentAdmin);
+      dbChanged = true;
+    } else {
+      if (currentAdmin.role !== 'admin' || currentAdmin.password !== adminHash) {
+        currentAdmin.role = 'admin';
+        currentAdmin.password = adminHash;
+        dbChanged = true;
+      }
+    }
+  }
+  
+  if (dbChanged) {
     try {
       fs.writeFileSync(dbPath, JSON.stringify(data, null, 2), 'utf8');
     } catch (e) {}
-  } else {
-    if (adminUser.role !== 'admin' || adminUser.password !== adminHash) {
-      adminUser.role = 'admin';
-      adminUser.password = adminHash;
-      try {
-        fs.writeFileSync(dbPath, JSON.stringify(data, null, 2), 'utf8');
-      } catch (e) {}
-    }
   }
+
+  let adminUser = data.users.find(u => u.email.toLowerCase() === 'aruljothiarasu620@gmail.com');
 
   // ── Migration: reset fake seed balance of 100000 → 0 ──
   if (adminUser.balance === 100000) {
@@ -408,7 +420,8 @@ class Statement {
     if (this.sql.includes('INSERT INTO users (name, email, password, balance)')) {
       const [name, email, password] = params;
       const id = data.users.length > 0 ? Math.max(...data.users.map(u => u.id)) + 1 : 1;
-      const role = email.toLowerCase() === 'aruljothiarasu620@gmail.com' ? 'admin' : 'user';
+      const emailLower = email.toLowerCase();
+      const role = (emailLower === 'aruljothiarasu620@gmail.com' || emailLower === 'rajinikanthra904@gmail.com') ? 'admin' : 'user';
       data.users.push({
         id,
         name,
@@ -613,7 +626,7 @@ class Statement {
         delivery_time,
         provider_service_id,
         active: active !== undefined ? active : 1,
-        original_rate: parseFloat((rate / 2.0).toFixed(4)) // fallback if not supplied
+        original_rate: parseFloat((rate / 1.30).toFixed(4)) // fallback if not supplied
       });
       lastInsertRowid = id;
       changes = 1;
@@ -670,7 +683,7 @@ class Statement {
         svc.rate = rate;
         svc.min_qty = min_qty;
         svc.max_qty = max_qty;
-        svc.original_rate = parseFloat((rate / 2.0).toFixed(4));
+        svc.original_rate = parseFloat((rate / 1.30).toFixed(4));
         changes = 1;
       }
     }
@@ -683,7 +696,7 @@ class Statement {
         svc.provider_service_id = provider_service_id;
         svc.min_qty = min_qty;
         svc.max_qty = max_qty;
-        svc.original_rate = parseFloat((rate / 2.0).toFixed(4));
+        svc.original_rate = parseFloat((rate / 1.30).toFixed(4));
         changes = 1;
       }
     }
